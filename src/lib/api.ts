@@ -13,6 +13,14 @@ async function must<T>(p: PromiseLike<{ data: T | null; error: unknown }>): Prom
   return data as T;
 }
 
+/**
+ * Realtime topic unique to one subscriber. supabase.channel(name) hands back an existing channel with the
+ * same name, and adding listeners to one that is already subscribed throws — which happens when two
+ * screens (e.g. the menu and the cart) watch the same branch at once.
+ */
+let topicSeq = 0;
+const uniqueTopic = (name: string) => `${name}:${++topicSeq}:${Math.random().toString(36).slice(2, 8)}`;
+
 // ---------------------------------------------------------------- catalogue (public)
 export type Catalogue = {
   branches: Branch[]; categories: Category[]; products: Product[]; milks: Milk[];
@@ -58,7 +66,7 @@ export function useSoldOut(branchId: string | null | undefined) {
   useEffect(() => {
     if (!branchId) return;
     const channel = supabase
-      .channel(`availability-${branchId}`)
+      .channel(uniqueTopic(`availability-${branchId}`))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'product_availability', filter: `branch_id=eq.${branchId}` },
         () => qc.invalidateQueries({ queryKey: ['sold-out', branchId] }))
       .subscribe();
@@ -131,7 +139,7 @@ export function useOrder(orderId: string | undefined, userId: string | undefined
   useEffect(() => {
     if (!orderId || !userId) return;
     const channel = supabase
-      .channel(`order-${orderId}`)
+      .channel(uniqueTopic(`order-${orderId}`))
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` },
         () => qc.invalidateQueries({ queryKey: ['order', orderId] }))
       .subscribe();
@@ -209,7 +217,7 @@ export function useBranchQueue(branchId: string | null) {
   useEffect(() => {
     if (!branchId) return;
     const channel = supabase
-      .channel(`queue-${branchId}`)
+      .channel(uniqueTopic(`queue-${branchId}`))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `branch_id=eq.${branchId}` },
         () => qc.invalidateQueries({ queryKey: ['queue', branchId] }))
       .subscribe();
