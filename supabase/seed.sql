@@ -91,7 +91,9 @@ on conflict (id) do update set category_id = excluded.category_id, name = exclud
 
 insert into public.campaigns (id, tone, eyebrow, title, body, sort) values
   ('second-coffee', 'primary', 'Sepette otomatik', 'İkinci kahve %50 indirimli', 'Sepetindeki her iki kahveden ucuz olanı yarı fiyatına.', 0),
-  ('own-cup', 'eco', 'Çevre dostu', 'Kendi bardağını getir, ₺10 indirim', 'Sepette “Kendi bardağımı getireceğim”i aç.', 1),
   ('fresh', 'copper', 'Her sabah', 'Kruvasanlar fırından yeni çıktı', 'Tereyağlı, çikolatalı, bademli.', 2),
   ('loyalty', 'surface', 'Kahve kartı', '10 kahveye 1 kahve bizden', 'Ödediğin her kahve bir damga.', 3)
 on conflict (id) do update set tone = excluded.tone, eyebrow = excluded.eyebrow, title = excluded.title, body = excluded.body, sort = excluded.sort;
+
+-- "Kendi bardağını getir" indirimi kapalı (0 = kapalı; açmak için kuruş cinsinden tutar, ör. 1000 = ₺10).
+update public.app_settings set own_cup_discount = 0 where id;

@@ -41,7 +41,7 @@ export default function CartScreen() {
       const product = cat.productById.get(l.productId);
       return product ? [{ key: l.key, product, milk: l.milkId ? cat.milkById.get(l.milkId) ?? null : null, qty: l.qty }] : [];
     });
-    return priceCart(lines, { useRewards: Math.min(cart.useRewards, rewardCount), ownCup: cart.ownCup, settings: cat.settings, drinkCategories: cat.drinkCategories });
+    return priceCart(lines, { useRewards: Math.min(cart.useRewards, rewardCount), ownCup: cart.ownCup && cat.settings.own_cup_discount > 0, settings: cat.settings, drinkCategories: cat.drinkCategories });
   }, [cat, cart.lines, cart.useRewards, cart.ownCup, rewardCount]);
 
   const unavailable = totals?.lines.filter((l) => soldOut.data?.has(l.product.id)) ?? [];
@@ -121,7 +121,7 @@ export default function CartScreen() {
             value={cart.eco}
             onChange={cart.setEco}
           />
-          {totals.hasDrink ? (
+          {totals.hasDrink && cat.settings.own_cup_discount > 0 ? (
             <>
               <Divider />
               <ToggleRow

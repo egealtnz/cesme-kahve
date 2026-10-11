@@ -63,7 +63,6 @@ KAHVE KARTI
 
 KÜÇÜK İYİLİKLER
 • Sepetteki her iki kahveden ucuz olanı yarı fiyatına.
-• Kendi bardağını getir, ₺10 indirim kazan.
 • Çevre dostu ambalajı seç.
 
 İstanbul, Kocaeli, Ankara, Antalya, Alaçatı ve Didim'deki şubelerimizde seni bekliyoruz.

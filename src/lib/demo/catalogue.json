@@ -859,17 +859,6 @@
    "starts_at": null
   },
   {
-   "id": "own-cup",
-   "body": "Sepette “Kendi bardağımı getireceğim”i aç.",
-   "sort": 1,
-   "tone": "eco",
-   "title": "Kendi bardağını getir, ₺10 indirim",
-   "ends_at": null,
-   "eyebrow": "Çevre dostu",
-   "is_active": true,
-   "starts_at": null
-  },
-  {
    "id": "fresh",
    "body": "Tereyağlı, çikolatalı, bademli.",
    "sort": 2,
@@ -896,7 +885,7 @@
   "support_email": null,
   "support_phone": null,
   "max_open_orders": 3,
-  "own_cup_discount": 1000,
+  "own_cup_discount": 0,
   "reward_valid_days": 90,
   "second_coffee_pct": 50,
   "stamps_per_reward": 10,

@@ -37,7 +37,7 @@ export default function CheckoutConfirm() {
       const product = cat.productById.get(l.productId);
       return product ? [{ key: l.key, product, milk: l.milkId ? cat.milkById.get(l.milkId) ?? null : null, qty: l.qty }] : [];
     });
-    return priceCart(lines, { useRewards: Math.min(cart.useRewards, rewardCount), ownCup: cart.ownCup, settings: cat.settings, drinkCategories: cat.drinkCategories });
+    return priceCart(lines, { useRewards: Math.min(cart.useRewards, rewardCount), ownCup: cart.ownCup && cat.settings.own_cup_discount > 0, settings: cat.settings, drinkCategories: cat.drinkCategories });
   }, [cat, cart.lines, cart.useRewards, cart.ownCup, rewardCount]);
 
   if (!session) return <Redirect href={{ pathname: '/auth/sign-in', params: { next: '/checkout/branch' } }} />;
@@ -58,7 +58,7 @@ export default function CheckoutConfirm() {
         paymentMethod: effective,
         useRewards: Math.min(cart.useRewards, totals.coffees, rewardCount),
         eco: cart.eco,
-        ownCup: cart.ownCup,
+        ownCup: cart.ownCup && (cat?.settings.own_cup_discount ?? 0) > 0,
       });
       qc.invalidateQueries({ queryKey: ['rewards'] });
 

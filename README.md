@@ -23,7 +23,7 @@
 
 - **Fiyat sunucuda hesaplanır.** Uygulamanın gönderdiği tutara güvenilmez; `place_order` sepeti veritabanındaki fiyatlarla yeniden hesaplar. Tüm para tutarları kuruş cinsinden tamsayıdır.
 - **İkinci kahve %50:** ücretli kahveler pahalıdan ucuza sıralanır, her ikilinin ucuz olanı yarı fiyat.
-- **Kendi bardağın:** sipariş başına ₺10 indirim (`app_settings.own_cup_discount`).
+- **Kendi bardağın:** şu an kapalı (`app_settings.own_cup_discount = 0`). Açmak için tutarı kuruş cinsinden yazın (₺10 = `1000`); sepetteki seçenek kendiliğinden görünür. Kampanya kartı için `campaigns` tablosuna satır ekleyin.
 - **Hediye kahve:** sepetteki en pahalı kahvelere uygulanır. Ödenmemiş siparişte rezerve edilir; iptal veya ödeme zaman aşımında geri verilir. 90 gün geçerli.
 - **Damga:** kartla ödenmiş siparişte ödeme anında, kasada ödenecek siparişte "Teslim edildi" anında verilir. Hediye kahveler damga kazandırmaz. Kasada sipariş dışı alışverişler için barista üye QR'ını okutup damga ekler.
 - **Ödenmemiş kart siparişleri** 30 dakika sonra otomatik iptal olur (pg_cron, 10 dakikada bir).
@@ -162,6 +162,6 @@ Bu fonksiyon siparişi iptal eder ve "iade edildi" olarak işaretler, siparişte
 
 - Ayrı yönetim paneli yok (Supabase Dashboard kullanılıyor).
 - İade iyzico panelinden elle yapılıyor.
-- Kampanya kartları bilgilendirme amaçlı; otomatik uygulanan kampanyalar yalnızca "ikinci kahve %50" ve "kendi bardağın ₺10".
+- Kampanya kartları bilgilendirme amaçlı; otomatik uygulanan kampanya yalnızca "ikinci kahve %50" ("kendi bardağın" indirimi kapalı).
 - Uygulama yalnızca Türkçe.
 - Kayıtlı kart yok; her ödemede iyzico formu açılır.
