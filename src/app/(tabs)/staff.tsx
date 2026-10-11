@@ -10,6 +10,7 @@ import { Txt } from '@/components/Txt';
 import { Button } from '@/components/Button';
 import { Badge } from '@/components/Badge';
 import { Card, TopBar } from '@/components/Layout';
+import { StaffHistory } from '@/components/StaffHistory';
 import { staffSetStatus, useBranchQueue, useCatalogue } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
 import { timeOf, tl } from '@/lib/format';
@@ -44,6 +45,7 @@ export default function StaffScreen() {
   }, [cat, staff, isAdmin]);
   const [branchId, setBranchId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [view, setView] = useState<'queue' | 'history'>('queue');
   const queue = useBranchQueue(branchId);
   const lastNew = useRef<number | null>(null);
 
@@ -72,6 +74,7 @@ export default function StaffScreen() {
     try {
       await staffSetStatus(o.id, status);
       await qc.invalidateQueries({ queryKey: ['queue', branchId] });
+      if (status === 'collected' || status === 'cancelled') qc.invalidateQueries({ queryKey: ['history', branchId] });
     } catch (e) {
       toast(errorMessage(e));
     } finally {
@@ -83,7 +86,8 @@ export default function StaffScreen() {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: space[4], paddingBottom: 64 + insets.bottom + space[8] }}
-        refreshControl={<RefreshControl refreshing={queue.isRefetching} onRefresh={() => queue.refetch()} />}
+        refreshControl={<RefreshControl refreshing={queue.isRefetching}
+          onRefresh={() => (view === 'queue' ? queue.refetch() : qc.invalidateQueries({ queryKey: ['history', branchId] }))} />}
       >
         <TopBar />
         <Txt variant="overline" color="secondaryInk" style={{ marginTop: space[4] }}>Şube ekranı</Txt>
@@ -108,8 +112,18 @@ export default function StaffScreen() {
             onPress={() => branchId && router.push({ pathname: '/staff/menu', params: { branch: branchId } })} />
         </View>
 
-        {queue.isLoading ? <ActivityIndicator color={color.ink} style={{ marginTop: space[8] }} /> : null}
-        {COLUMNS.map((col) => {
+        <View style={styles.segment} accessibilityRole="tablist">
+          {([['queue', 'Sıradakiler' + (queue.data?.length ? ' (' + queue.data.length + ')' : '')], ['history', 'Geçmiş']] as const).map(([key, label]) => (
+            <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: view === key }} onPress={() => setView(key)}
+              style={[styles.segmentItem, view === key && styles.segmentOn]}>
+              <Txt variant="label" color={view === key ? 'ink' : 'inkMuted'}>{label}</Txt>
+            </Pressable>
+          ))}
+        </View>
+
+        {view === 'history' ? <StaffHistory branchId={branchId} /> : null}
+        {view === 'queue' && queue.isLoading ? <ActivityIndicator color={color.ink} style={{ marginTop: space[8] }} /> : null}
+        {view === 'queue' && COLUMNS.map((col) => {
           const orders = queue.data?.filter((o) => o.status === col.status) ?? [];
           return (
             <View key={col.status} style={{ marginTop: space[6] }}>
@@ -166,9 +180,11 @@ export default function StaffScreen() {
             </View>
           );
         })}
-        <Txt variant="caption" color="inkMuted" style={{ marginTop: space[8] }}>
-          Kartla ödenmiş siparişlerin iptali için önce iyzico panelinden iade yap.
-        </Txt>
+        {view === 'queue' ? (
+          <Txt variant="caption" color="inkMuted" style={{ marginTop: space[8] }}>
+            Kartla ödenmiş siparişlerin iptali için önce iyzico panelinden iade yap.
+          </Txt>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -178,6 +194,9 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.background },
   chip: { height: 36, paddingHorizontal: space[4], borderRadius: radius.full, backgroundColor: color.surfaceMuted, justifyContent: 'center' },
   tools: { flexDirection: 'row', gap: space[3], marginTop: space[4] },
+  segment: { flexDirection: 'row', marginTop: space[6], padding: 4, borderRadius: radius.full, backgroundColor: color.surfaceMuted },
+  segmentItem: { flex: 1, height: 40, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
+  segmentOn: { backgroundColor: color.surface, boxShadow: '0px 1px 3px rgba(0, 40, 62, 0.12)' },
   colHead: { flexDirection: 'row', alignItems: 'center', gap: space[2] },
   count: { minWidth: 28, height: 28, borderRadius: 14, paddingHorizontal: 8, backgroundColor: color.secondarySoft, alignItems: 'center', justifyContent: 'center' },
   order: { marginTop: space[3] },

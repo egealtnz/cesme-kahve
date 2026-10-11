@@ -226,6 +226,17 @@ export function useBranchQueue(branchId: string | null) {
   return query;
 }
 
+/** Finished orders (collected or cancelled) of a branch since a given moment, newest first. */
+export function useBranchHistory(branchId: string | null, sinceIso: string) {
+  return useQuery({
+    queryKey: ['history', branchId, sinceIso],
+    enabled: !!branchId,
+    queryFn: async () => (await must(supabase.from('orders').select('*, order_items(*)')
+      .eq('branch_id', branchId!).in('status', ['collected', 'cancelled']).gte('created_at', sinceIso)
+      .order('created_at', { ascending: false }).limit(200))) as Order[],
+  });
+}
+
 export async function staffSetStatus(orderId: string, status: OrderStatus): Promise<Order> {
   const { order } = await callFunction<{ order: Order }>('staff-order-status', { order_id: orderId, status });
   return order;

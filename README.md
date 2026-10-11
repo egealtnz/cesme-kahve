@@ -143,7 +143,7 @@ where user_id = (select id from auth.users where email = 'barista@ornek.com');
 
 Şube kimlikleri: `select id, name from public.branches order by sort;`
 
-Personel hesabıyla giriş yapıldığında alt menüde **Şube** sekmesi görünür: sipariş kuyruğu (Yeni → Hazırlanıyor → Hazır → Teslim edildi), QR okutma (hediye kahve kullanımı, kasada damga ekleme) ve tükenen ürünler.
+Personel hesabıyla giriş yapıldığında alt menüde **Şube** sekmesi görünür: sipariş kuyruğu (Yeni → Hazırlanıyor → Hazır → Teslim edildi), **Geçmiş** (bugün / 7 / 30 günün teslim edilen ve iptal edilen siparişleri, ciro ve kahve sayısıyla), QR okutma (hediye kahve kullanımı, kasada damga ekleme) ve tükenen ürünler. Baristalar yalnızca kendi şubelerini görür; `admin` rolü tüm şubeler arasında geçiş yapabilir.
 
 ### Kartla ödenmiş siparişin iptali
 

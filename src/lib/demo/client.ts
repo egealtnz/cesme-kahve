@@ -256,6 +256,7 @@ class Query implements PromiseLike<Result> {
   neq(c: string, v: unknown) { this.filters.push((r) => r[c] !== v); return this; }
   is(c: string, v: unknown) { this.filters.push((r) => (r[c] ?? null) === v); return this; }
   gt(c: string, v: unknown) { this.filters.push((r) => r[c] != null && String(r[c]) > String(v)); return this; }
+  gte(c: string, v: unknown) { this.filters.push((r) => r[c] != null && String(r[c]) >= String(v)); return this; }
   in(c: string, vals: unknown[]) { this.filters.push((r) => vals.includes(r[c])); return this; }
   order(col: string, opts?: { ascending?: boolean }) { this.sort = { col, asc: opts?.ascending ?? true }; return this; }
   limit(n: number) { this.max = n; return this; }
