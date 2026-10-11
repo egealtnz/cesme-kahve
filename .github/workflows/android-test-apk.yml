@@ -58,7 +58,8 @@ jobs:
 
       - name: Build release APK (arm64 phones)
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
+        # Lint on the release build needs more JVM memory than the generated default (2 GB heap, 512 MB metaspace).
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a "-Dorg.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=2g -Dfile.encoding=UTF-8"
 
       - name: Publish as a GitHub release
         env:
