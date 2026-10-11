@@ -233,29 +233,32 @@ function chunk<T>(arr: T[], n: number): T[][] {
   return out;
 }
 
+// Width of the picture on the right of each campaign card; the text gets the rest, so they never overlap.
+const CAMPAIGN_ART: Record<Campaign['tone'], number> = { primary: 84, eco: 84, copper: 80, surface: 74 };
+
 function CampaignCard({ c, product }: { c: Campaign; product?: Product }) {
   const bg = { primary: color.primary, eco: color.successSoft, copper: color.secondarySoft, surface: color.surface }[c.tone];
   const fg = c.tone === 'primary' ? 'onPrimary' : 'ink';
   const eyebrow = c.tone === 'primary' ? 'onPrimary' : c.tone === 'eco' ? 'success' : 'secondaryInk';
   return (
     <View style={[styles.campaign, { backgroundColor: bg }, c.tone === 'surface' && { boxShadow: shadow.sm }]}>
-      <View style={{ maxWidth: 168, flex: 1, zIndex: 1 }}>
+      <View style={styles.campaignText}>
         {c.eyebrow ? <Txt variant="overline" color={eyebrow}>{c.eyebrow}</Txt> : null}
         <Txt variant="h5" color={fg} style={{ marginTop: 4 }}>{c.title}</Txt>
-        {c.body ? <Txt variant="caption" color={fg} style={{ marginTop: 'auto' }}>{c.body}</Txt> : null}
+        {c.body ? <Txt variant="caption" color={fg} style={{ marginTop: 'auto', paddingTop: space[2] }}>{c.body}</Txt> : null}
       </View>
-      <View style={styles.campaignArt} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <View style={[styles.campaignArt, { width: CAMPAIGN_ART[c.tone] }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         {c.tone === 'primary' ? (
           <View style={styles.wheel}><View style={styles.wheelInner}><Percent size={26} color={color.secondary} strokeWidth={1.75} /></View></View>
         ) : c.tone === 'eco' ? (
-          <Recycle size={84} color={color.success} strokeWidth={1.25} />
+          <Recycle size={76} color={color.success} strokeWidth={1.25} />
         ) : c.tone === 'copper' && product ? (
-          <ProductPhoto product={product} size={92} />
+          <ProductPhoto product={product} size={80} />
         ) : (
           <View style={styles.stampGrid}>
             {Array.from({ length: 9 }, (_, i) => (
               <View key={i} style={[styles.stamp, i < 6 ? { backgroundColor: color.secondary } : styles.stampOff]}>
-                {i < 6 ? <Coffee size={13} color={color.onSecondary} strokeWidth={1.75} /> : null}
+                {i < 6 ? <Coffee size={12} color={color.onSecondary} strokeWidth={1.75} /> : null}
               </View>
             ))}
           </View>
@@ -280,12 +283,16 @@ const styles = StyleSheet.create({
   inline: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
   inlineTight: { flexDirection: 'row', alignItems: 'center', gap: space[2] },
   rewardBanner: { marginTop: space[4], flexDirection: 'row', alignItems: 'center', gap: space[3], padding: space[3], borderRadius: radius.md, backgroundColor: color.secondarySoft },
-  campaign: { width: 272, height: 148, borderRadius: radius.lg, padding: space[4], overflow: 'hidden' },
-  campaignArt: { position: 'absolute', right: -4, top: 0, bottom: 0, width: 110, alignItems: 'center', justifyContent: 'center' },
-  wheel: { width: 120, height: 120, borderRadius: 60, backgroundColor: color.secondary, alignItems: 'center', justifyContent: 'center', marginRight: -40 },
+  campaign: {
+    width: 272, minHeight: 148, borderRadius: radius.lg, padding: space[4], overflow: 'hidden',
+    flexDirection: 'row', gap: space[3],
+  },
+  campaignText: { flex: 1, minWidth: 0 },
+  campaignArt: { alignItems: 'center', justifyContent: 'center' },
+  wheel: { width: 120, height: 120, borderRadius: 60, backgroundColor: color.secondary, alignItems: 'center', justifyContent: 'center', marginRight: -56 },
   wheelInner: { width: 72, height: 72, borderRadius: 36, borderWidth: 3, borderColor: color.primary, backgroundColor: color.primary, alignItems: 'center', justifyContent: 'center' },
-  stampGrid: { width: 96, flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  stamp: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  stampGrid: { width: 74, flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  stamp: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   stampOff: { borderWidth: 1.5, borderStyle: 'dashed', borderColor: color.lineStrong },
   chipsBar: { backgroundColor: color.background, paddingVertical: space[2], marginTop: space[3] },
   chip: { height: 36, paddingHorizontal: space[4], borderRadius: radius.full, backgroundColor: color.surfaceMuted, justifyContent: 'center' },
