@@ -9,6 +9,8 @@ type CartState = Stored & {
   count: number;
   add: (productId: string, milkId: string | null, qty?: number) => void;
   setQty: (key: string, qty: number) => void;
+  /** Takes one of this product out (from the line added last, e.g. the latest milk choice). */
+  removeOne: (productId: string) => void;
   removeProducts: (productIds: string[]) => void;
   clear: () => void;
   setBranch: (id: string | null) => void;
@@ -58,6 +60,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       ...s,
       lines: qty <= 0 ? s.lines.filter((l) => l.key !== key) : s.lines.map((l) => (l.key === key ? { ...l, qty: Math.min(20, qty) } : l)),
     })),
+    removeOne: (productId) => setState((s) => {
+      const idx = s.lines.map((l) => l.productId).lastIndexOf(productId);
+      if (idx < 0) return s;
+      const line = s.lines[idx];
+      const lines = line.qty <= 1 ? s.lines.filter((_, i) => i !== idx) : s.lines.map((l, i) => (i === idx ? { ...l, qty: l.qty - 1 } : l));
+      return { ...s, lines };
+    }),
     removeProducts: (ids) => setState((s) => ({ ...s, lines: s.lines.filter((l) => !ids.includes(l.productId)) })),
     clear: () => setState((s) => ({ ...s, lines: [], ownCup: false, useRewards: 0 })),
     setBranch: (branchId) => setState((s) => ({ ...s, branchId })),

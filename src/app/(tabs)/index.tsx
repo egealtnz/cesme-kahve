@@ -190,6 +190,7 @@ export default function HomeScreen() {
                           soldOut={!!soldOut.data?.has(p.id)}
                           onOpen={() => router.push({ pathname: '/product/[id]', params: { id: p.id } })}
                           onAdd={() => quickAdd(p)}
+                          onRemove={() => cart.removeOne(p.id)}
                         />
                       ))}
                       {row.length === 1 ? <View style={{ flex: 1 }} /> : null}

@@ -7,19 +7,22 @@
 //
 //   node scripts/build-preview.mjs            # export + package
 //   node scripts/build-preview.mjs --no-export  # package an existing dist-preview/ export again
+//   node scripts/build-preview.mjs --live       # same single file, but connected to the real Supabase project
+//                                               # (EXPO_PUBLIC_SUPABASE_URL / _ANON_KEY): dist-preview/cesme-kahve-web.html
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const out = path.join(root, 'dist-preview');
-const target = path.join(out, 'cesme-kahve-onizleme.html');
+const live = process.argv.includes('--live');
+const target = path.join(out, live ? 'cesme-kahve-web.html' : 'cesme-kahve-onizleme.html');
 
 if (!process.argv.includes('--no-export')) {
   fs.rmSync(out, { recursive: true, force: true });
-  execSync('npx expo export --platform web --output-dir dist-preview --clear', {
-    cwd: root, stdio: 'inherit', env: { ...process.env, EXPO_PUBLIC_DEMO: '1' },
-  });
+  const env = { ...process.env };
+  if (live) delete env.EXPO_PUBLIC_DEMO; else env.EXPO_PUBLIC_DEMO = '1';
+  execSync('npx expo export --platform web --output-dir dist-preview --clear', { cwd: root, stdio: 'inherit', env });
 }
 
 const MIME = {
@@ -94,7 +97,7 @@ html = html.replace(/<script src="([^"]+)"[^>]*><\/script>/g, (_, src) => {
   return `<script>${VIRTUAL_HISTORY}\n{ let window = __ckPreview.win, location = __ckPreview.loc, history = __ckPreview.hist;\n${safeScript(js)}\n}</script>`;
 });
 html = html.replace('href="/favicon.ico"', `href="${dataUri(path.join(out, 'favicon.ico'))}"`);
-html = html.replace('<title>Çeşme Kahve</title>', '<title>Çeşme Kahve · Önizleme</title>');
+if (!live) html = html.replace('<title>Çeşme Kahve</title>', '<title>Çeşme Kahve · Önizleme</title>');
 // On a computer screen, show the app in a phone-sized frame instead of stretched across the window.
 html = html.replace('</head>', `<style id="preview-frame">
   @media (min-width: 600px) {

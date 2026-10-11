@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Plus } from 'lucide-react-native';
+import { Minus, Plus } from 'lucide-react-native';
 import { Txt } from './Txt';
 import { Badge } from './Badge';
 import { menuImageSource } from '@/lib/supabase';
@@ -22,9 +22,9 @@ export function ProductPhoto({ product, size, soldOut }: { product: Pick<Product
   );
 }
 
-type CardProps = { product: Product; qty: number; soldOut: boolean; onOpen: () => void; onAdd: () => void };
+type CardProps = { product: Product; qty: number; soldOut: boolean; onOpen: () => void; onAdd: () => void; onRemove: () => void };
 
-export function ProductCard({ product, qty, soldOut, onOpen, onAdd }: CardProps) {
+export function ProductCard({ product, qty, soldOut, onOpen, onAdd, onRemove }: CardProps) {
   return (
     <View style={styles.card}>
       <Pressable accessibilityRole="button" accessibilityLabel={`${product.name}, ${tl(product.price)}. Ayrıntılar`} onPress={onOpen} style={{ flex: 1 }}>
@@ -41,20 +41,32 @@ export function ProductCard({ product, qty, soldOut, onOpen, onAdd }: CardProps)
       </Pressable>
       <View style={styles.foot}>
         <Txt variant="price" color={soldOut ? 'inkMuted' : 'ink'}>{tl(product.price)}</Txt>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={soldOut ? `${product.name} tükendi` : `${product.name} sepete ekle`}
-          accessibilityState={{ disabled: soldOut }}
-          disabled={soldOut}
-          hitSlop={4}
-          onPress={onAdd}
-          style={({ pressed }) => [styles.add, { backgroundColor: soldOut ? color.disabled : pressed ? color.secondaryPressed : color.secondary }]}
-        >
-          <Plus size={22} color={soldOut ? color.inkDisabled : color.onSecondary} strokeWidth={1.75} />
-          {qty > 0 ? (
-            <View style={styles.qty}><Txt variant="caption" color="onPrimary" style={{ fontFamily: 'DMSans-Bold', fontSize: 11 }}>{qty}</Txt></View>
-          ) : null}
-        </Pressable>
+        {qty > 0 ? (
+          <View style={styles.stepper}>
+            <Pressable accessibilityRole="button" accessibilityLabel={`${product.name} sepetten bir tane çıkar`} hitSlop={4} onPress={onRemove}
+              style={({ pressed }) => [styles.stepBtn, pressed && { backgroundColor: color.secondaryPressed }]}>
+              <Minus size={18} color={color.onSecondary} strokeWidth={2} />
+            </Pressable>
+            <Txt variant="label" color="onSecondary" style={styles.stepQty} accessibilityLabel={`Sepette ${qty} adet`}>{qty}</Txt>
+            <Pressable accessibilityRole="button" accessibilityLabel={soldOut ? `${product.name} tükendi` : `${product.name} sepete ekle`}
+              accessibilityState={{ disabled: soldOut }} disabled={soldOut} hitSlop={4} onPress={onAdd}
+              style={({ pressed }) => [styles.stepBtn, pressed && { backgroundColor: color.secondaryPressed }]}>
+              <Plus size={18} color={soldOut ? color.inkDisabled : color.onSecondary} strokeWidth={2} />
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={soldOut ? `${product.name} tükendi` : `${product.name} sepete ekle`}
+            accessibilityState={{ disabled: soldOut }}
+            disabled={soldOut}
+            hitSlop={4}
+            onPress={onAdd}
+            style={({ pressed }) => [styles.add, { backgroundColor: soldOut ? color.disabled : pressed ? color.secondaryPressed : color.secondary }]}
+          >
+            <Plus size={22} color={soldOut ? color.inkDisabled : color.onSecondary} strokeWidth={1.75} />
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -67,5 +79,7 @@ const styles = StyleSheet.create({
   body: { paddingHorizontal: space[1], paddingTop: space[3] },
   foot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space[1], paddingTop: space[3], paddingBottom: space[1] },
   add: { width: 40, height: 40, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
-  qty: { position: 'absolute', top: -4, right: -4, minWidth: 20, height: 20, paddingHorizontal: 4, borderRadius: 10, backgroundColor: color.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: color.surface },
+  stepper: { flexDirection: 'row', alignItems: 'center', height: 40, borderRadius: radius.full, backgroundColor: color.secondary },
+  stepBtn: { width: 36, height: 40, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
+  stepQty: { minWidth: 18, textAlign: 'center', fontVariant: ['tabular-nums'] },
 });

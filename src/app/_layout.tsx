@@ -12,6 +12,10 @@ import { ToastProvider } from '@/state/toast';
 import { useNotificationRouting } from '@/lib/notifications';
 import { color } from '@/theme/tokens';
 import { DemoBadge } from '@/components/Demo';
+import { CrashScreen } from '@/components/CrashScreen';
+
+/** Any screen that crashes shows a recoverable error screen instead of a blank page. */
+export const ErrorBoundary = CrashScreen;
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
