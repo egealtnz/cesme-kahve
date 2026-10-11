@@ -51,7 +51,7 @@ jobs:
           if [ "${{ github.event_name }}" != "push" ] || [ -z "$BEFORE" ] || ! git cat-file -e "$BEFORE" 2>/dev/null; then
             echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0
           fi
-          CHANGED=$(git diff --name-only "$BEFORE" "$GITHUB_SHA" -- package.json package-lock.json app.json app.config.js google-services.json assets/brand | head -20)
+          CHANGED=$(git diff --name-only "$BEFORE" "$GITHUB_SHA" -- package.json package-lock.json app.json app.config.js google-services.json assets/brand | head -20 | tr '\n' ' ')
           if [ -n "$CHANGED" ]; then
             echo "::notice::Native files changed ($CHANGED). No OTA update; install the new APK from Releases instead."
             echo "changed=true" >> "$GITHUB_OUTPUT"
