@@ -14,7 +14,8 @@
 | Veritabanı | Supabase Postgres, satır düzeyi güvenlik (RLS) | `supabase/migrations/` |
 | Sunucu mantığı | Postgres fonksiyonları (fiyatlandırma, damga, hediye) + Deno edge functions | `supabase/migrations/…_logic.sql`, `supabase/functions/` |
 | Ödeme | iyzico Checkout Form (3D Secure dahil) | `supabase/functions/iyzico-*` |
-| Bildirim | Expo Push (FCM / APNs) | `src/lib/notifications.ts`, `staff-order-status` |
+| Bildirim | Expo Push (FCM / APNs): müşteriye "siparişin hazır", baristaya "yeni sipariş" | `src/lib/notifications.ts`, `staff-order-status`, `notify-branch` |
+| Güncellemeler | EAS Update: yeni kod telefonlara uygulama yeniden indirilmeden gider | `src/components/UpdateBanner.tsx`, `.github/workflows/ota-update.yml` |
 | Görseller | Menü fotoğrafları uygulamanın içinde; sonradan eklenen ürünler için Supabase Storage `menu` kovası | `supabase/seed-images/`, `src/lib/menu/images.ts` |
 | Yasal metinler | Uygulama içinde + web'de barındırılan statik sayfalar | `src/content/legal.json`, `legal-site/` |
 
@@ -78,7 +79,7 @@ Yerelde gönderilen doğrulama e-postaları `http://127.0.0.1:54324` (Inbucket) 
 ```bash
 npm run typecheck        # TypeScript
 npm run lint             # ESLint (expo lint)
-npm run test:backend     # 22 uçtan uca test: RLS, fiyat, damga/hediye, personel, ödeme, iade, hesap silme
+npm run test:backend     # 24 uçtan uca test: RLS, fiyat, damga/hediye, personel, ödeme, iade, şube bildirimi, hesap silme
 ```
 
 `test:backend` yalnızca **yerel veya staging** projede çalıştırılmalı; test kullanıcıları oluşturup siler:
@@ -144,6 +145,8 @@ where user_id = (select id from auth.users where email = 'barista@ornek.com');
 Şube kimlikleri: `select id, name from public.branches order by sort;`
 
 Personel hesabıyla giriş yapıldığında alt menüde **Şube** sekmesi görünür: sipariş kuyruğu (Yeni → Hazırlanıyor → Hazır → Teslim edildi), **Geçmiş** (bugün / 7 / 30 günün teslim edilen ve iptal edilen siparişleri, ciro ve kahve sayısıyla), QR okutma (hediye kahve kullanımı, kasada damga ekleme) ve tükenen ürünler. Baristalar yalnızca kendi şubelerini görür; `admin` rolü tüm şubeler arasında geçiş yapabilir.
+
+Şube ekranı ilk açıldığında bildirim izni ister. İzin verilen telefonlara, şubeye yeni sipariş düştüğünde (kasada ödemede hemen, kartla ödemede ödeme alınınca) uygulama kapalı olsa da "Yeni sipariş #1234 · Ayşe" bildirimi gelir; dokununca Şube ekranı açılır. Bildirim yalnızca o şubenin personeline gider (tüm şubeleri gören `admin` hesaplarına gitmez). Çıkış yapılan telefona bildirim gönderilmez. Android'de bu bildirimler ayrı bir kanaldadır ("Yeni siparişler (şube)"), telefon ayarlarından ayrıca sessize alınabilir.
 
 ### Kartla ödenmiş siparişin iptali
 

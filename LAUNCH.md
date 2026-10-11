@@ -15,7 +15,8 @@ Her adımın sonunda ✅ ile işaretlenmiş bir kontrol var.
 | App Store Connect uygulama kimliği | `eas.json` → `submit.production.ios.ascAppId` | 8 |
 | Supabase adresi ve anahtarı | EAS ortam değişkenleri | 6 |
 | iyzico anahtarları | Supabase secrets | 3 |
-| Firebase `google-services.json` | EAS dosya değişkeni | 6 |
+| Firebase `google-services.json` | proje kökü (git'e eklenir) | 6 |
+| Expo erişim anahtarı (uygulama içi güncellemeler) | GitHub secret `EXPO_TOKEN` | 9 |
 | Uygulama ikonu (vektör logo ile yeniden) | `assets/brand/` | 5 |
 
 ---
@@ -52,7 +53,13 @@ Mağazada satıcı adı olarak şirket unvanı görünür; kişisel hesap açmay
 ```bash
 supabase login
 supabase link --project-ref <proje-ref>        # Dashboard → Project Settings → General
-supabase db push                                # 5 migration: şema, iş kuralları, güvenlik, iade, kart anahtarı
+supabase db push                                # 6 migration: şema, iş kuralları, güvenlik, iade, kart anahtarı, şube bildirimi
+```
+
+Ardından SQL Editor'da, yeni siparişlerin baristalara bildirim olarak gitmesi için:
+
+```sql
+update public.app_settings set functions_url = 'https://<proje-ref>.supabase.co/functions/v1';
 ```
 
 3. Menü ve şube verisini yükleyin. Dashboard → **SQL Editor** → `supabase/seed.sql` dosyasının içeriğini yapıştırıp çalıştırın. **Önce fiyatları ve ürün adlarını gerçekleriyle değiştirin**: seed'deki fiyatlar örnektir, kuruş cinsindendir (₺135 = `13500`).
@@ -89,8 +96,10 @@ EXPO_ACCESS_TOKEN=<expo.dev → Account settings → Access tokens>
 
 ```bash
 supabase secrets set --env-file supabase/.env.production
-supabase functions deploy           # iyzico-checkout, iyzico-callback, iyzico-status, staff-order-status, delete-account
+supabase functions deploy           # iyzico-checkout, iyzico-callback, iyzico-status, staff-order-status, delete-account, notify-branch
 ```
+
+`notify-branch` da JWT doğrulaması olmadan yayınlanır: onu kullanıcı değil veritabanı çağırır (sipariş şubeye düştüğünde, pg_net ile). Her siparişi yalnızca bir kez ve yalnızca o şubenin personeline bildirir.
 
 `iyzico-callback` fonksiyonu JWT doğrulaması olmadan yayınlanır (`supabase/config.toml` içinde `verify_jwt = false`). iyzico ödeme sonrası tarayıcıyı bu adrese yönlendirir. Güvenlik, ödemenin iyzico'dan imzalı olarak tekrar sorgulanmasıyla sağlanır. Dashboard → Edge Functions'ta bu fonksiyonun "Verify JWT" ayarının kapalı olduğunu kontrol edin.
 
@@ -176,12 +185,8 @@ eas env:create --environment production --name EXPO_PUBLIC_LEGAL_BASE_URL    --v
 Anon (publishable) anahtar uygulamaya gömülür ve bu güvenlidir: veriye erişim veritabanındaki satır düzeyi güvenlik kurallarıyla sınırlıdır. **`service_role` anahtarını asla buraya koymayın.**
 
 **Android bildirimleri (FCM):**
-1. Firebase'de Android uygulaması ekleyin, paket adı `com.cesmekahve.app`. `google-services.json` dosyasını indirin.
-2. EAS'a dosya değişkeni olarak yükleyin:
-   ```bash
-   eas env:create --environment production --name GOOGLE_SERVICES_JSON --type file --value ./google-services.json --visibility secret
-   ```
-3. Firebase → Project settings → Service accounts → "Generate new private key". Bu JSON'u `eas credentials` → Android → production → **Google Service Account → FCM V1** bölümüne yükleyin.
+1. Firebase'de Android uygulaması ekleyin, paket adı `com.cesmekahve.app`. `google-services.json` dosyasını indirip proje köküne koyun ve git'e ekleyin (gizli değildir; her APK'nın içinde zaten bulunur).
+2. Firebase → Project settings → Service accounts → "Generate new private key". Bu JSON **gizlidir**: expo.dev → proje → Credentials → Android → `com.cesmekahve.app` → **FCM V1 service account key** bölümüne yükleyin, başka hiçbir yere koymayın.
 
 **iOS bildirimleri:** `eas build` ilk iOS derlemesinde Apple hesabınıza giriş ister; push anahtarını (APNs) ve sertifikaları sizin için oluşturur. Sorulduğunda "Set up Push Notifications" için evet deyin.
 
@@ -203,6 +208,7 @@ Gerçek cihazda tam test listesi:
 - [ ] Reddedilen kart (`4111 1111 1111 1129`) → "Ödeme tamamlanamadı", sipariş iptal, kullanılan hediye kahve geri geliyor
 - [ ] **Kasada öde** ile sipariş
 - [ ] Bildirim izni ver → personel hesabıyla siparişi "Hazır" yap → bildirim geliyor, dokununca sipariş açılıyor
+- [ ] Personel telefonunda uygulama kapalıyken müşteri sipariş versin → "Yeni sipariş #…" bildirimi geliyor, dokununca Şube ekranı açılıyor
 - [ ] Personel: QR okutma kamera izni, müşterinin üye QR'ı ile kasada damga ekleme, hediye kahve QR'ı ile kullanım
 - [ ] Personel: bir ürünü "tükendi" yap → müşteri tarafında o şubede eklenemiyor
 - [ ] Şifremi unuttum → kodla yeni şifre
@@ -261,6 +267,8 @@ Uygulama içi satın alma gerekmez: satılan şey fiziksel ürün (kahve) olduğ
 
 - **Kartla ödemeyi açma / canlıya geçiş:** 3. adımdaki iyzico secret'larını girin (canlıda `IYZICO_BASE_URL=https://api.iyzipay.com`), fonksiyonları yeniden yayınlayın ve SQL Editor'da `update public.app_settings set card_payments_enabled = true;` çalıştırın. Uygulamayı yeniden derlemek gerekmez.
 - **Yedekler:** Pro planda günlük yedek otomatiktir. Dashboard → Database → Backups'tan kontrol edin.
+- **Uygulama içi güncellemeler (yeniden indirmeden):** ekranlar, metinler, iş akışı gibi JavaScript değişiklikleri telefonlara EAS Update ile gider. `main`'e her push'ta `.github/workflows/ota-update.yml` güncellemeyi yayınlar (GitHub → Settings → Secrets → Actions → `EXPO_TOKEN`, expo.dev → Account settings → Access tokens). Telefon uygulama açılırken güncellemeyi indirir; "Yeni sürüm hazır · Yenile" şeridine dokununca ya da bir sonraki açılışta yeni sürüm çalışır. Elle yayınlamak için: `npx eas-cli@latest update --channel preview --environment preview --message "..."` (mağaza sürümleri için `--channel production`).
+- **Yeni APK ne zaman gerekir:** yalnızca native taraf değiştiğinde (yeni native kütüphane, `app.json`, ikonlar, `google-services.json`). O zaman aynı commit'te `app.json` → `version`'ı artırın (ör. `1.0.0` → `1.0.1`): güncellemeler yalnızca aynı sürüm numaralı kurulumlara gider, böylece eski APK'lar çalıştıramayacakları kodu almaz. `android-test-apk.yml` bu dosyalar değişince yeni test APK'sını kendiliğinden derler.
 - **Sürüm yükseltme:** `eas build --profile production --platform all` ve `eas submit`. Sürüm numarası EAS'ta otomatik artar. Görünen sürümü (`1.0.0`) `app.json` → `version` ile değiştirin.
 - **Menü ve fiyat güncellemeleri** için yeni sürüm gerekmez (README → Yönetim).
 - **İadeler:** iyzico panelinden iade, ardından `select public.admin_refund_order(<sipariş no>);`

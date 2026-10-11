@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, AppState, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Redirect, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, ChefHat, Leaf, ListChecks, PackageCheck, Recycle, ScanLine, X } from 'lucide-react-native';
+import { BellOff, Check, ChefHat, Leaf, ListChecks, PackageCheck, Recycle, ScanLine, X } from 'lucide-react-native';
 import { Txt } from '@/components/Txt';
 import { Button } from '@/components/Button';
 import { Badge } from '@/components/Badge';
@@ -13,6 +13,7 @@ import { Card, TopBar } from '@/components/Layout';
 import { StaffHistory } from '@/components/StaffHistory';
 import { staffSetStatus, useBranchQueue, useCatalogue } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
+import { registerForStaffNotifications } from '@/lib/notifications';
 import { timeOf, tl } from '@/lib/format';
 import type { Order, OrderStatus } from '@/lib/types';
 import { useAuth } from '@/state/auth';
@@ -34,7 +35,7 @@ const COLUMNS: { status: OrderStatus; title: string }[] = [
 
 export default function StaffScreen() {
   const insets = useSafeAreaInsets();
-  const { isStaff, staff } = useAuth();
+  const { isStaff, staff, userId } = useAuth();
   const { data: cat } = useCatalogue();
   const qc = useQueryClient();
   const toast = useToast();
@@ -48,6 +49,18 @@ export default function StaffScreen() {
   const [view, setView] = useState<'queue' | 'history'>('queue');
   const queue = useBranchQueue(branchId);
   const lastNew = useRef<number | null>(null);
+  const [push, setPush] = useState<'granted' | 'denied' | 'unavailable' | null>(null);
+
+  // New orders reach the barista's phone as notifications even when the app is closed. Registers this
+  // phone for the signed-in staff account, and again when they come back from system settings.
+  useEffect(() => {
+    if (!isStaff || !userId) return;
+    let alive = true;
+    const register = () => registerForStaffNotifications(userId).then((r) => { if (alive) setPush(r); }).catch(() => undefined);
+    register();
+    const sub = AppState.addEventListener('change', (st) => { if (st === 'active') register(); });
+    return () => { alive = false; sub.remove(); };
+  }, [isStaff, userId]);
 
   useEffect(() => {
     AsyncStorage.getItem(STAFF_BRANCH_KEY).then((saved) => {
@@ -103,6 +116,17 @@ export default function StaffScreen() {
               </Pressable>
             ))}
           </ScrollView>
+        ) : null}
+
+        {push === 'denied' ? (
+          <Pressable accessibilityRole="button" onPress={() => Linking.openSettings().catch(() => undefined)}
+            style={styles.pushOff}>
+            <BellOff size={20} color={color.ink} strokeWidth={2} />
+            <View style={{ flex: 1 }}>
+              <Txt variant="label">Bildirimler kapalı</Txt>
+              <Txt variant="bodySm" color="inkMuted">Uygulama kapalıyken yeni siparişlerden haberdar olmak için ayarlardan aç.</Txt>
+            </View>
+          </Pressable>
         ) : null}
 
         <View style={styles.tools}>
@@ -194,6 +218,10 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.background },
   chip: { height: 36, paddingHorizontal: space[4], borderRadius: radius.full, backgroundColor: color.surfaceMuted, justifyContent: 'center' },
   tools: { flexDirection: 'row', gap: space[3], marginTop: space[4] },
+  pushOff: {
+    flexDirection: 'row', alignItems: 'center', gap: space[3], marginTop: space[4], padding: space[4],
+    borderRadius: radius.lg, backgroundColor: color.warningSoft,
+  },
   segment: { flexDirection: 'row', marginTop: space[6], padding: 4, borderRadius: radius.full, backgroundColor: color.surfaceMuted },
   segmentItem: { flex: 1, height: 40, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
   segmentOn: { backgroundColor: color.surface, boxShadow: '0px 1px 3px rgba(0, 40, 62, 0.12)' },

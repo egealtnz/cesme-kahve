@@ -12,6 +12,7 @@ import { ToastProvider } from '@/state/toast';
 import { useNotificationRouting } from '@/lib/notifications';
 import { color } from '@/theme/tokens';
 import { DemoBadge } from '@/components/Demo';
+import { UpdateBanner } from '@/components/UpdateBanner';
 import { CrashScreen } from '@/components/CrashScreen';
 
 /** Any screen that crashes shows a recoverable error screen instead of a blank page. */
@@ -47,6 +48,7 @@ export default function RootLayout() {
               <StatusBar style="dark" />
               {fontsLoaded ? <Navigator /> : null}
               {fontsLoaded ? <DemoBadge /> : null}
+              {fontsLoaded ? <UpdateBanner /> : null}
             </ToastProvider>
           </CartProvider>
         </AuthProvider>

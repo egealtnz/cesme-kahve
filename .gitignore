@@ -54,6 +54,5 @@ supabase/.branches
 supabase/.temp
 
 # Firebase config (supplied by EAS file variable GOOGLE_SERVICES_JSON)
-google-services.json
 GoogleService-Info.plist
 supabase/.env.production

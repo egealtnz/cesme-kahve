@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import type { Session } from '@supabase/supabase-js';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { forgetThisDevice } from '@/lib/notifications';
 import { useProfile, useStaffMemberships } from '@/lib/api';
 import type { Profile, StaffMembership } from '@/lib/types';
 
@@ -47,7 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profile: profile.data,
     staff: staff.data ?? [],
     isStaff: (staff.data ?? []).length > 0,
-    signOut: async () => { await supabase.auth.signOut({ scope: 'local' }); },
+    signOut: async () => {
+      await forgetThisDevice();
+      await supabase.auth.signOut({ scope: 'local' });
+    },
   }), [ready, session, userId, profile.data, staff.data]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

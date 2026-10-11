@@ -1,6 +1,6 @@
-// Extends app.json. Android push notifications (FCM) need google-services.json from Firebase; it is not
-// committed. Locally put it in the project root; on EAS upload it as a file variable named
-// GOOGLE_SERVICES_JSON (see LAUNCH.md, step 6).
+// Extends app.json. Android push notifications (FCM) need google-services.json from Firebase. It sits in the
+// project root and is committed (it only identifies the Firebase project and ships inside every APK anyway;
+// the private FCM key lives in Expo's credentials, never here). GOOGLE_SERVICES_JSON can point elsewhere.
 const fs = require('node:fs');
 
 module.exports = ({ config }) => {

@@ -1,0 +1,79 @@
+# Over-the-air update: sends the new JavaScript (screens, logic, texts, images) to phones that already have
+# the app installed. The app downloads it in the background and offers "Yeni sürüm hazır · Yenile".
+# Runs on every push to main that changes the app. Needs the repository secret EXPO_TOKEN
+# (expo.dev → Account settings → Access tokens); without it this workflow does nothing.
+#
+# Updates only reach APKs with the same runtime version (= "version" in app.json). A push that changes the
+# native side (see android-test-apk.yml) is skipped here and becomes a new APK instead.
+name: OTA update
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore: ['**/*.md', 'store/**', 'legal-site/**', 'supabase/**', 'scripts/**', '.github/workflows/android-test-apk.yml']
+
+concurrency:
+  group: ota-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      # Public values: the publishable key is designed to ship inside the app (access is controlled by RLS).
+      EXPO_PUBLIC_SUPABASE_URL: https://fwjdqkpzcsriqbwcbycw.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_Ph05U5WM59i74zGeyLY57g_MqhI2HKS
+      EXPO_PUBLIC_LEGAL_BASE_URL: https://www.cesmekahve.com/uygulama
+    steps:
+      - name: Check for the Expo token
+        id: token
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::warning::EXPO_TOKEN secret is not set, so no update was published. See LAUNCH.md (Over-the-air updates)."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.token.outputs.ok == 'true'
+        with:
+          fetch-depth: 0
+
+      - name: Skip if the native side changed
+        id: native
+        if: steps.token.outputs.ok == 'true'
+        run: |
+          BEFORE="${{ github.event.before }}"
+          if [ "${{ github.event_name }}" != "push" ] || [ -z "$BEFORE" ] || ! git cat-file -e "$BEFORE" 2>/dev/null; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          CHANGED=$(git diff --name-only "$BEFORE" "$GITHUB_SHA" -- package.json package-lock.json app.json app.config.js google-services.json assets/brand | head -20)
+          if [ -n "$CHANGED" ]; then
+            echo "::notice::Native files changed ($CHANGED). No OTA update; install the new APK from Releases instead."
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.token.outputs.ok == 'true' && steps.native.outputs.changed == 'false'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.token.outputs.ok == 'true' && steps.native.outputs.changed == 'false'
+        run: npm ci
+
+      - name: Publish the update
+        if: steps.token.outputs.ok == 'true' && steps.native.outputs.changed == 'false'
+        run: |
+          printf 'EXPO_PUBLIC_SUPABASE_URL=%s\nEXPO_PUBLIC_SUPABASE_ANON_KEY=%s\nEXPO_PUBLIC_LEGAL_BASE_URL=%s\n' \
+            "$EXPO_PUBLIC_SUPABASE_URL" "$EXPO_PUBLIC_SUPABASE_ANON_KEY" "$EXPO_PUBLIC_LEGAL_BASE_URL" > .env
+          MESSAGE=$(git log -1 --pretty=%s | cut -c1-200)
+          npx eas-cli@latest update --channel preview --environment preview --platform android \
+            --message "$MESSAGE" --non-interactive

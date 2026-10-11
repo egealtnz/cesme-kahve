@@ -176,6 +176,17 @@
         "projectId": "5ead8200-becc-4df9-944f-bdcee36ed228"
       }
     },
-    "owner": "ege33s-team"
+    "owner": "ege33s-team",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/5ead8200-becc-4df9-944f-bdcee36ed228",
+      "requestHeaders": {
+        "expo-channel-name": "preview"
+      },
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    }
   }
 }

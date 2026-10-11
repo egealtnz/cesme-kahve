@@ -339,6 +339,43 @@ if (MOCK) {
   });
 }
 
+await test('a new order is announced once to that branch\'s staff only', async () => {
+  const c = await newCustomer('Cem');
+  try {
+    const ok = `ExponentPushToken[staff-ok-${stamp}]`, dead = `ExponentPushToken[staff-dead-${stamp}]`, other = `ExponentPushToken[other-${stamp}]`;
+    await admin.from('push_tokens').insert([
+      { token: ok, user_id: staff.id, platform: 'android' },
+      { token: dead, user_id: staff.id, platform: 'android' },
+      { token: other, user_id: otherStaff.id, platform: 'android' },
+    ]);
+    const o = await rpc(c.client, 'place_order', { p_branch_id: 'pendik-marina', p_payment_method: 'store',
+      p_items: [{ product_id: 'su', quantity: 2 }] });
+    const call = (body) => fetch(`${URL_}/functions/v1/notify-branch`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+    const first = await call({ order_id: o.id });
+    assert.equal(first.status, 200, await first.clone().text());
+    assert.deepEqual(await first.json(), { sent: 1 });
+    const log = await (await fetch(`${MOCK}/push/log`)).json();
+    const mine = log.filter((m) => m.data?.orderId === o.id);
+    assert.deepEqual(mine.map((m) => m.to).sort(), [dead, ok].sort(), 'only the branch staff are notified');
+    assert.match(mine[0].title, new RegExp(`^Yeni sipariş #${o.order_no} · Cem`));
+    assert.match(mine[0].body, /2× Su · Kasada ödenecek/);
+    assert.equal(mine[0].channelId, 'new-orders');
+    assert.equal(mine[0].data.screen, 'staff');
+    const { data: left } = await admin.from('push_tokens').select('token').in('token', [ok, dead]);
+    assert.deepEqual(left.map((t) => t.token), [ok], 'uninstalled app token is forgotten');
+
+    const again = await call({ order_id: o.id });
+    assert.deepEqual(await again.json(), { skipped: true });
+    assert.equal((await (await fetch(`${MOCK}/push/log`)).json()).filter((m) => m.data?.orderId === o.id).length, 2);
+    assert.equal((await call({ order_id: 'nope' })).status, 400);
+    await admin.from('push_tokens').delete().in('token', [ok, other]);
+  } finally {
+    await admin.auth.admin.deleteUser(c.id);
+  }
+});
+
 await test('deleting an account removes the person and keeps anonymous order records', async () => {
   const o = await rpc(b.client, 'place_order', { p_branch_id: 'pendik-marina', p_payment_method: 'store',
     p_items: [{ product_id: 'su', quantity: 1 }] });

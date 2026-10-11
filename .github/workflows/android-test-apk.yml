@@ -1,5 +1,9 @@
 # Builds an installable Android test APK of the live app and publishes it as a GitHub release.
-# Runs on every push to main that changes the app, or by hand: Actions → "Android test APK" → Run workflow.
+# Only needed when the native side changes (new native library, app.json, icons, Firebase file): screens and
+# logic reach installed phones as over-the-air updates instead (ota-update.yml). Can also be run by hand:
+# Actions → "Android test APK" → Run workflow.
+# When a change here adds or upgrades native code, raise "version" in app.json in the same commit, so phones
+# with the old APK stop receiving updates they could not run.
 # Store builds (signed .aab for Google Play) go through EAS instead — see LAUNCH.md.
 name: Android test APK
 
@@ -7,7 +11,14 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths-ignore: ['**/*.md', 'store/**', 'legal-site/**', 'supabase/**', 'scripts/**']
+    paths:
+      - package.json
+      - package-lock.json
+      - app.json
+      - app.config.js
+      - google-services.json
+      - assets/brand/**
+      - .github/workflows/android-test-apk.yml
 
 permissions:
   contents: write
