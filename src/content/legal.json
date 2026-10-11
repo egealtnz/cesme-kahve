@@ -1,0 +1,153 @@
+{
+  "_note": "TASLAK METİNLER — yayından önce Çeşme Kahve'nin hukuk danışmanı tarafından gözden geçirilmeli. [Köşeli parantez] içindeki alanlar şirket bilgileriyle doldurulmalı. Bu dosya hem uygulamada (src/app/legal/[doc].tsx) hem de web sayfalarında (scripts/build-legal-site.mjs → legal-site/) kullanılır.",
+  "company": {
+    "name": "[Şirket unvanı, ör. Çeşme Kahve Gıda San. ve Tic. A.Ş.]",
+    "address": "[Merkez adresi]",
+    "mersis": "[MERSİS numarası]",
+    "kep": "[KEP adresi]",
+    "email": "[kvkk@cesmekahve.com]",
+    "phone": "[Müşteri hizmetleri telefonu]"
+  },
+  "docs": {
+    "kvkk": {
+      "title": "KVKK Aydınlatma Metni",
+      "updated": "10.10.2026",
+      "blocks": [
+        ["p", "Bu metin, 6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) madde 10 uyarınca, Çeşme Kahve mobil uygulamasını kullanan müşterilerimizi bilgilendirmek için hazırlanmıştır."],
+        ["h", "Veri sorumlusu"],
+        ["p", "{company.name}, {company.address}. MERSİS: {company.mersis}. KEP: {company.kep}."],
+        ["h", "Hangi verileri işliyoruz?"],
+        ["li", "Kimlik ve iletişim: ad, soyad, e-posta, cep telefonu."],
+        ["li", "Müşteri işlem: siparişler, seçtiğin şube, ürünler, tutarlar, ödeme yöntemi, sipariş durumu, kahve kartı damgaları ve hediye kahveler."],
+        ["li", "İsteğe bağlı: doğum tarihi, favori şube."],
+        ["li", "İşlem güvenliği: oturum bilgileri, cihaz bildirim kimliği (bildirimlere izin verirsen), IP adresi (ödeme güvenliği için)."],
+        ["li", "Pazarlama: yalnızca ticari elektronik ileti onayı verdiysen iletişim tercihlerin."],
+        ["p", "Kart bilgilerin bizim sistemlerimize ulaşmaz; ödeme, lisanslı ödeme kuruluşu iyzico'nun güvenli sayfasında alınır."],
+        ["h", "Amaçlar ve hukuki sebepler"],
+        ["li", "Üyeliğin, siparişlerin, ödemenin ve kahve kartının yürütülmesi — sözleşmenin kurulması ve ifası (KVKK m.5/2-c)."],
+        ["li", "Fatura ve muhasebe kayıtları — kanuni yükümlülük (m.5/2-ç) ve kanunlarda öngörülme (m.5/2-a)."],
+        ["li", "Dolandırıcılığın önlenmesi ve hesap güvenliği — meşru menfaat (m.5/2-f)."],
+        ["li", "Kampanya ve fırsat iletileri — açık rızan (m.5/1) ve 6563 sayılı Kanun kapsamındaki onayın."],
+        ["h", "Kimlere aktarıyoruz?"],
+        ["li", "iyzico Ödeme Hizmetleri A.Ş.: kartla ödemelerin alınması."],
+        ["li", "Supabase Inc.: uygulamanın veritabanı ve sunucu altyapısı (sunucular Avrupa Birliği'nde, Almanya'da)."],
+        ["li", "Expo (650 Industries Inc.): sipariş bildirimlerinin telefonuna iletilmesi."],
+        ["li", "[E-posta gönderim sağlayıcısı]: doğrulama ve şifre sıfırlama e-postaları."],
+        ["li", "Yetkili kamu kurumları: kanunen zorunlu hallerde."],
+        ["p", "Yurt dışındaki hizmet sağlayıcılara aktarım KVKK m.9 kapsamında [standart sözleşme / Kurul'a bildirim yöntemi] ile yapılır."],
+        ["h", "Ne kadar saklıyoruz?"],
+        ["p", "Üyelik verilerini hesabın açık kaldığı sürece saklarız. Hesabını sildiğinde kimlik ve iletişim verilerin, damgaların ve hediye kahvelerin silinir; sipariş ve ödeme kayıtları adınla ilişkisi kesilerek vergi mevzuatının öngördüğü süre (10 yıl) boyunca saklanır."],
+        ["h", "Hakların"],
+        ["p", "KVKK m.11 uyarınca verilerinin işlenip işlenmediğini öğrenme, bilgi talep etme, düzeltilmesini veya silinmesini isteme, itiraz etme ve zararın giderilmesini talep etme haklarına sahipsin. Başvurularını {company.email} adresine veya {company.kep} KEP adresine iletebilirsin. Hesabını uygulamadan Profil → Hesabımı sil adımıyla her zaman silebilirsin."]
+      ]
+    },
+    "gizlilik": {
+      "title": "Gizlilik Politikası",
+      "updated": "10.10.2026",
+      "blocks": [
+        ["p", "Çeşme Kahve uygulaması siparişini hazırlamak, ödemeni almak ve kahve kartını yönetmek için gereken en az veriyi toplar. Reklam takibi yapmaz, verilerini satmaz, üçüncü taraf reklam ağlarıyla paylaşmaz."],
+        ["h", "Topladığımız veriler"],
+        ["li", "Hesap: ad, soyad, e-posta, cep telefonu; isteğe bağlı doğum tarihi ve favori şube."],
+        ["li", "Siparişler: ürünler, şube, tutar, ödeme yöntemi ve durumu."],
+        ["li", "Kahve kartı: damga sayısı, hediye kahveler ve kullanımları."],
+        ["li", "Cihaz: izin verirsen bildirim kimliği. Konum, kişiler, fotoğraflar veya mikrofon kullanılmaz."],
+        ["li", "Kamera yalnızca şube personelinin QR kodu okutma ekranında, personelin izniyle kullanılır; görüntü kaydedilmez."],
+        ["h", "Ödeme"],
+        ["p", "Kartla ödemeler iyzico'nun güvenli ödeme sayfasında yapılır. Kart numaran Çeşme Kahve'ye iletilmez ve saklanmaz."],
+        ["h", "Saklama ve silme"],
+        ["p", "Hesabını uygulamada Profil → Hesabımı sil ile ya da {company.email} adresine yazarak silebilirsin. Silme işleminde kimlik ve iletişim verilerin, damgaların ve hediye kahvelerin hemen silinir; yasal olarak saklamamız gereken sipariş kayıtları adınla ilişkisi kesilerek saklanır."],
+        ["h", "Güvenlik"],
+        ["p", "Veriler şifreli bağlantı (HTTPS) ile iletilir. Oturum bilgilerin telefonunda şifreli saklanır. Her müşteri yalnızca kendi verisini görebilir; şube personeli yalnızca kendi şubesinin siparişlerini görür."],
+        ["h", "Çocuklar"],
+        ["p", "Üyelik 18 yaşını doldurmuş kişiler içindir."],
+        ["h", "İletişim"],
+        ["p", "{company.name} · {company.address} · {company.email}"],
+        ["p", "Ayrıntılı bilgi için KVKK Aydınlatma Metni'ni inceleyebilirsin."]
+      ]
+    },
+    "kullanim-kosullari": {
+      "title": "Üyelik ve Kullanım Koşulları",
+      "updated": "10.10.2026",
+      "blocks": [
+        ["p", "Bu koşullar, {company.name} (\"Çeşme Kahve\") tarafından sunulan mobil uygulamanın kullanımını düzenler. Üye olarak bu koşulları kabul etmiş olursun."],
+        ["h", "Üyelik"],
+        ["li", "Üyelik 18 yaşını doldurmuş kişiler içindir. Bilgilerinin doğru ve güncel olmasından sen sorumlusun."],
+        ["li", "Hesabın kişiseldir; şifreni kimseyle paylaşma."],
+        ["h", "Siparişler"],
+        ["li", "Siparişler seçtiğin şubeden teslim alınır. Teslim süresi tahminidir."],
+        ["li", "Kartla ödenen siparişler ödeme onaylandığında, şubede ödenecek siparişler oluşturulduğunda şubeye iletilir."],
+        ["li", "Hazırlanmaya başlanmamış \"şubede öde\" siparişlerini uygulamadan iptal edebilirsin. Kartla ödenmiş siparişlerin iptal ve iadesi için şubeyle ya da müşteri hizmetleriyle iletişime geç."],
+        ["li", "Gıda ürünleri çabuk bozulabilen ürünler olduğundan cayma hakkı kapsamı dışındadır (Mesafeli Sözleşmeler Yönetmeliği m.15)."],
+        ["h", "Kahve kartı ve hediye kahve"],
+        ["li", "Ödediğin her kahve için kartına 1 damga eklenir. {stamps_per_reward} damga 1 hediye kahveye dönüşür."],
+        ["li", "Hediye kahve kazanıldığı tarihten itibaren {reward_valid_days} gün geçerlidir, menüdeki tüm kahvelerde kullanılabilir, nakde çevrilemez ve devredilemez."],
+        ["li", "Hediye kahveyle alınan kahve için damga verilmez; hediye kahve \"ikinci kahve\" indirimiyle aynı kahvede birleşmez."],
+        ["li", "Çeşme Kahve, kampanya ve kahve kartı kurallarını önceden duyurarak değiştirebilir; kazanılmış hediye kahveler süresi boyunca geçerliliğini korur."],
+        ["h", "Hesabın sonlandırılması"],
+        ["p", "Hesabını istediğin zaman uygulamadan silebilirsin. Kötüye kullanım halinde Çeşme Kahve hesabı askıya alabilir."],
+        ["h", "Uyuşmazlıklar"],
+        ["p", "Bu koşullara Türkiye Cumhuriyeti kanunları uygulanır. Tüketici işlemlerinde Tüketici Hakem Heyetleri ve Tüketici Mahkemeleri yetkilidir."]
+      ]
+    },
+    "ticari-ileti": {
+      "title": "Ticari Elektronik İleti Onayı",
+      "updated": "10.10.2026",
+      "blocks": [
+        ["p", "6563 sayılı Elektronik Ticaretin Düzenlenmesi Hakkında Kanun kapsamında, {company.name} tarafından kampanya, fırsat ve yeniliklerle ilgili e-posta ve SMS gönderilmesine onay veriyorum."],
+        ["p", "Bu onay isteğe bağlıdır; vermemen üyeliğini ve siparişlerini etkilemez. Onayını istediğin zaman Profil → Hesap bilgileri → Kampanya bildirimleri ayarından ya da iletilerdeki ret bağlantısından ücretsiz olarak geri alabilirsin."],
+        ["p", "Onayın İleti Yönetim Sistemi'ne (İYS) kaydedilir."]
+      ]
+    },
+    "on-bilgilendirme": {
+      "title": "Ön Bilgilendirme Formu",
+      "updated": "10.10.2026",
+      "blocks": [
+        ["h", "Satıcı"],
+        ["p", "{company.name} · {company.address} · MERSİS {company.mersis} · {company.phone} · {company.email}"],
+        ["h", "Ürünler ve fiyat"],
+        ["p", "Siparişindeki ürünler, adetleri, KDV dahil birim ve toplam fiyatlar ile uygulanan indirimler ödeme ekranında ve sipariş özetinde gösterilir."],
+        ["h", "Ödeme ve teslimat"],
+        ["p", "Ödeme, uygulama üzerinden kartla (iyzico) ya da teslimat sırasında şubede yapılır. Ürünler seçtiğin şubeden teslim alınır; kargo veya adrese teslimat yoktur."],
+        ["h", "Cayma hakkı"],
+        ["p", "Siparişler çabuk bozulabilen gıda ürünlerinden oluştuğu için Mesafeli Sözleşmeler Yönetmeliği m.15/1-c uyarınca cayma hakkı kullanılamaz."],
+        ["h", "Şikâyet ve itiraz"],
+        ["p", "Şikâyetlerini {company.email} adresine iletebilir, yasal sınırlar dahilinde Tüketici Hakem Heyetine veya Tüketici Mahkemesine başvurabilirsin."]
+      ]
+    },
+    "mesafeli-satis": {
+      "title": "Mesafeli Satış Sözleşmesi",
+      "updated": "10.10.2026",
+      "blocks": [
+        ["h", "1. Taraflar"],
+        ["p", "Satıcı: {company.name}, {company.address}. Alıcı: uygulamada üye olan ve sipariş veren kişi."],
+        ["h", "2. Konu"],
+        ["p", "Bu sözleşme, alıcının uygulama üzerinden sipariş verdiği ürünlerin satışı ve şubeden teslimine ilişkin tarafların hak ve yükümlülüklerini 6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği uyarınca düzenler."],
+        ["h", "3. Ürün, fiyat ve ödeme"],
+        ["p", "Ürünler, adetleri ve KDV dahil fiyatları sipariş özetinde belirtildiği gibidir. Ödeme kartla iyzico üzerinden ya da teslimde şubede yapılır."],
+        ["h", "4. Teslimat"],
+        ["p", "Ürünler alıcının seçtiği şubede, sipariş durumunda \"Hazır\" bildirildikten sonra teslim edilir."],
+        ["h", "5. Cayma hakkı"],
+        ["p", "Çabuk bozulabilen gıda ürünleri olduğundan cayma hakkı bulunmamaktadır (Yönetmelik m.15/1-c). Hazırlanmaya başlanmamış ve şubede ödenecek siparişler uygulamadan iptal edilebilir."],
+        ["h", "6. Uyuşmazlık"],
+        ["p", "Uyuşmazlıklarda Ticaret Bakanlığınca ilan edilen parasal sınırlar dahilinde Tüketici Hakem Heyetleri, aşan durumlarda Tüketici Mahkemeleri yetkilidir."],
+        ["p", "Alıcı, siparişi onaylayarak Ön Bilgilendirme Formu'nu okuduğunu ve bu sözleşmeyi elektronik ortamda kabul ettiğini beyan eder."]
+      ]
+    },
+    "yardim": {
+      "title": "Yardım ve iletişim",
+      "updated": "10.10.2026",
+      "blocks": [
+        ["h", "Siparişim nerede?"],
+        ["p", "Profil → Siparişlerim'den siparişinin durumunu canlı takip edebilirsin. Bildirimlere izin verdiysen siparişin hazır olunca haber veririz."],
+        ["h", "Siparişimi iptal edebilir miyim?"],
+        ["p", "\"Şubede öde\" ile verdiğin siparişi hazırlanmaya başlamadan sipariş ekranından iptal edebilirsin. Kartla ödenmiş siparişler için şubeyle konuş."],
+        ["h", "Hediye kahvemi nasıl kullanırım?"],
+        ["p", "Sepette \"Kahve kartı\" bölümünden siparişe ekleyebilir ya da Profil → Kahve kartı'ndaki QR kodu kasada okutabilirsin."],
+        ["h", "Kasadan aldığım kahveler için damga"],
+        ["p", "Profil → Kahve kartı'ndaki kart QR kodunu ödeme sırasında baristaya göster."],
+        ["h", "Bize ulaş"],
+        ["p", "E-posta: {company.email} · Telefon: {company.phone}"]
+      ]
+    }
+  }
+}

@@ -1,0 +1,61 @@
+# Builds an installable Android test APK of the live app and publishes it as a GitHub release.
+# Runs on every push to main that changes the app, or by hand: Actions → "Android test APK" → Run workflow.
+# Store builds (signed .aab for Google Play) go through EAS instead — see LAUNCH.md.
+name: Android test APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore: ['**/*.md', 'store/**', 'legal-site/**', 'supabase/**', 'scripts/**']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-test-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      # Public values: the publishable key is designed to ship inside the app (access is controlled by RLS).
+      EXPO_PUBLIC_SUPABASE_URL: https://fwjdqkpzcsriqbwcbycw.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_Ph05U5WM59i74zGeyLY57g_MqhI2HKS
+      EXPO_PUBLIC_LEGAL_BASE_URL: https://www.cesmekahve.com/uygulama
+      NODE_ENV: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate the Android project
+        run: npx expo prebuild --platform android --no-install --clean
+
+      - name: Build release APK (arm64 phones)
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
+
+      - name: Publish as a GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="test-${{ github.run_number }}"
+          cp android/app/build/outputs/apk/release/app-release.apk cesme-kahve-test.apk
+          gh release create "$TAG" cesme-kahve-test.apk \
+            --title "Test build ${{ github.run_number }}" \
+            --notes "Android test build from ${GITHUB_SHA::7}. Open this page on the phone, tap cesme-kahve-test.apk and install." \
+            --prerelease
