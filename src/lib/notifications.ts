@@ -49,10 +49,17 @@ async function registerDevice(userId: string): Promise<'granted' | 'denied' | 'u
   }
   if (!granted) return 'denied';
 
-  const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-  if (!projectId || String(projectId).startsWith('REPLACE')) return 'unavailable';
   try {
-    const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
+    // Android: the phone's Firebase token (our server sends through FCM directly).
+    // iOS: an Expo push token (sent through Expo's push service, which uses APNs).
+    let token: string;
+    if (Platform.OS === 'android') {
+      token = String((await Notifications.getDevicePushTokenAsync()).data);
+    } else {
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+      if (!projectId || String(projectId).startsWith('REPLACE')) return 'unavailable';
+      token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    }
     const { error } = await supabase.from('push_tokens').upsert(
       { token, user_id: userId, platform: Platform.OS as 'ios' | 'android', updated_at: new Date().toISOString() },
       { onConflict: 'token' },

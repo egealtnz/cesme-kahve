@@ -92,6 +92,8 @@ APP_SCHEME=cesmekahve
 EXPO_ACCESS_TOKEN=<expo.dev → Account settings → Access tokens>
 ```
 
+Android bildirimleri için ayrıca `FCM_SERVICE_ACCOUNT` secret'ı gerekir (6. adım). Çok satırlı olduğu için Dashboard → Edge Functions → Secrets'tan eklemek en kolayı.
+
 2. Yükleyin ve fonksiyonları yayınlayın:
 
 ```bash
@@ -186,7 +188,7 @@ Anon (publishable) anahtar uygulamaya gömülür ve bu güvenlidir: veriye eriş
 
 **Android bildirimleri (FCM):**
 1. Firebase'de Android uygulaması ekleyin, paket adı `com.cesmekahve.app`. `google-services.json` dosyasını indirip proje köküne koyun ve git'e ekleyin (gizli değildir; her APK'nın içinde zaten bulunur).
-2. Firebase → Project settings → Service accounts → "Generate new private key". Bu JSON **gizlidir**: expo.dev → proje → Credentials → Android → `com.cesmekahve.app` → **FCM V1 service account key** bölümüne yükleyin, başka hiçbir yere koymayın.
+2. Firebase → Project settings → Service accounts → "Generate new private key". Bu JSON **gizlidir**: Supabase → Edge Functions → **Secrets** → `FCM_SERVICE_ACCOUNT` adıyla dosyanın tüm içeriğini yapıştırın; başka hiçbir yere koymayın. Sunucu Android bildirimlerini bu anahtarla doğrudan Firebase'e (FCM v1) gönderir; Expo'da Android kimlik bilgisi gerekmez. iPhone bildirimleri Expo'nun push servisi üzerinden gider (aşağıda).
 
 **iOS bildirimleri:** `eas build` ilk iOS derlemesinde Apple hesabınıza giriş ister; push anahtarını (APNs) ve sertifikaları sizin için oluşturur. Sorulduğunda "Set up Push Notifications" için evet deyin.
 

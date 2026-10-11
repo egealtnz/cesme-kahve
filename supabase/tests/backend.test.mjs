@@ -339,38 +339,62 @@ if (MOCK) {
   });
 }
 
-await test('a new order is announced once to that branch\'s staff only', async () => {
+await test('a new order is announced once to that branch\'s staff only (FCM on Android, Expo on iOS)', async () => {
   const c = await newCustomer('Cem');
   try {
-    const ok = `ExponentPushToken[staff-ok-${stamp}]`, dead = `ExponentPushToken[staff-dead-${stamp}]`, other = `ExponentPushToken[other-${stamp}]`;
+    const android = `fcm-android-ok-${stamp}:APA91b${'x'.repeat(40)}`, dead = `fcm-android-dead-${stamp}:APA91b${'x'.repeat(40)}`;
+    const iphone = `ExponentPushToken[staff-ios-${stamp}]`, other = `fcm-other-branch-${stamp}:APA91b${'x'.repeat(40)}`;
     await admin.from('push_tokens').insert([
-      { token: ok, user_id: staff.id, platform: 'android' },
+      { token: android, user_id: staff.id, platform: 'android' },
       { token: dead, user_id: staff.id, platform: 'android' },
+      { token: iphone, user_id: staff.id, platform: 'ios' },
       { token: other, user_id: otherStaff.id, platform: 'android' },
     ]);
     const o = await rpc(c.client, 'place_order', { p_branch_id: 'pendik-marina', p_payment_method: 'store',
       p_items: [{ product_id: 'su', quantity: 2 }] });
     const call = (body) => fetch(`${URL_}/functions/v1/notify-branch`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const sentFor = async (id) => (await (await fetch(`${MOCK}/push/log`)).json())
+      .filter((m) => (m.fcm ? JSON.parse(m.data.body).orderId : m.data?.orderId) === id);
 
     const first = await call({ order_id: o.id });
     assert.equal(first.status, 200, await first.clone().text());
-    assert.deepEqual(await first.json(), { sent: 1 });
-    const log = await (await fetch(`${MOCK}/push/log`)).json();
-    const mine = log.filter((m) => m.data?.orderId === o.id);
-    assert.deepEqual(mine.map((m) => m.to).sort(), [dead, ok].sort(), 'only the branch staff are notified');
-    assert.match(mine[0].title, new RegExp(`^Yeni sipariş #${o.order_no} · Cem`));
-    assert.match(mine[0].body, /2× Su · Kasada ödenecek/);
-    assert.equal(mine[0].channelId, 'new-orders');
-    assert.equal(mine[0].data.screen, 'staff');
-    const { data: left } = await admin.from('push_tokens').select('token').in('token', [ok, dead]);
-    assert.deepEqual(left.map((t) => t.token), [ok], 'uninstalled app token is forgotten');
+    assert.deepEqual(await first.json(), { sent: 2 }, 'android + iphone accepted, uninstalled app refused');
+    const mine = await sentFor(o.id);
+    assert.deepEqual(mine.map((m) => m.token ?? m.to).sort(), [android, dead, iphone].sort(), 'only the branch staff are notified');
+
+    const viaFcm = mine.find((m) => m.token === android);
+    assert.equal(viaFcm.project, 'cesme-test');
+    assert.equal(viaFcm.android.priority, 'HIGH');
+    assert.equal(viaFcm.data.channelId, 'new-orders');
+    assert.match(viaFcm.data.title, new RegExp(`^Yeni sipariş #${o.order_no} · Cem`));
+    assert.match(viaFcm.data.message, /2× Su · Kasada ödenecek/);
+    assert.deepEqual(JSON.parse(viaFcm.data.body), { screen: 'staff', orderId: o.id, branchId: 'pendik-marina' });
+
+    const viaExpo = mine.find((m) => m.to === iphone);
+    assert.equal(viaExpo.title, viaFcm.data.title);
+    assert.equal(viaExpo.channelId, 'new-orders');
+    assert.equal(viaExpo.data.screen, 'staff');
+
+    const { data: left } = await admin.from('push_tokens').select('token').in('token', [android, dead, iphone]);
+    assert.deepEqual(left.map((t) => t.token).sort(), [android, iphone].sort(), 'uninstalled app token is forgotten');
 
     const again = await call({ order_id: o.id });
     assert.deepEqual(await again.json(), { skipped: true });
-    assert.equal((await (await fetch(`${MOCK}/push/log`)).json()).filter((m) => m.data?.orderId === o.id).length, 2);
+    assert.equal((await sentFor(o.id)).length, 3, 'no second announcement');
     assert.equal((await call({ order_id: 'nope' })).status, 400);
-    await admin.from('push_tokens').delete().in('token', [ok, other]);
+
+    // the customer's "order ready" notification goes through the same paths
+    await admin.from('push_tokens').insert({ token: `fcm-customer-${stamp}:APA91b${'y'.repeat(40)}`, user_id: c.id, platform: 'android' });
+    for (const st of ['preparing', 'ready']) {
+      const r = await fn(staff, 'staff-order-status', { order_id: o.id, status: st });
+      assert.equal(r.status, 200, await r.clone().text());
+    }
+    const ready = (await sentFor(o.id)).find((m) => m.token === `fcm-customer-${stamp}:APA91b${'y'.repeat(40)}`);
+    assert.ok(ready, 'customer got the ready notification');
+    assert.equal(ready.data.channelId, 'orders');
+    assert.match(ready.data.title, /Siparişin hazır/);
+    await admin.from('push_tokens').delete().in('token', [android, iphone, other]);
   } finally {
     await admin.auth.admin.deleteUser(c.id);
   }

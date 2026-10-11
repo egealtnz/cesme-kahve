@@ -14,7 +14,7 @@
 | Veritabanı | Supabase Postgres, satır düzeyi güvenlik (RLS) | `supabase/migrations/` |
 | Sunucu mantığı | Postgres fonksiyonları (fiyatlandırma, damga, hediye) + Deno edge functions | `supabase/migrations/…_logic.sql`, `supabase/functions/` |
 | Ödeme | iyzico Checkout Form (3D Secure dahil) | `supabase/functions/iyzico-*` |
-| Bildirim | Expo Push (FCM / APNs): müşteriye "siparişin hazır", baristaya "yeni sipariş" | `src/lib/notifications.ts`, `staff-order-status`, `notify-branch` |
+| Bildirim | Android: Firebase (FCM v1, doğrudan); iPhone: Expo Push (APNs). Müşteriye "siparişin hazır", baristaya "yeni sipariş" | `src/lib/notifications.ts`, `supabase/functions/_shared/push.ts` |
 | Güncellemeler | EAS Update: yeni kod telefonlara uygulama yeniden indirilmeden gider | `src/components/UpdateBanner.tsx`, `.github/workflows/ota-update.yml` |
 | Görseller | Menü fotoğrafları uygulamanın içinde; sonradan eklenen ürünler için Supabase Storage `menu` kovası | `supabase/seed-images/`, `src/lib/menu/images.ts` |
 | Yasal metinler | Uygulama içinde + web'de barındırılan statik sayfalar | `src/content/legal.json`, `legal-site/` |

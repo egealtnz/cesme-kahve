@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "797463807944",
+    "project_id": "cesme-kahve",
+    "storage_bucket": "cesme-kahve.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:797463807944:android:a8f356deee4c1933dba2fd",
+        "android_client_info": {
+          "package_name": "com.cesmekahve.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCkHNSkzsghQkuC0N0SVq9_qGacu8lQQOw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

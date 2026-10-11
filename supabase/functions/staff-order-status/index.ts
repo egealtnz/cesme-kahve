@@ -3,6 +3,7 @@
 // POST { order_id, status } with a staff member's session → { order }
 import { corsHeaders, fail, json } from '../_shared/http.ts';
 import { adminClient, requireUser, userClient } from '../_shared/supabase.ts';
+import { sendPush } from '../_shared/push.ts';
 
 const STATUSES = new Set(['preparing', 'ready', 'collected', 'cancelled']);
 const KNOWN_ERRORS = ['not_allowed', 'order_not_found', 'invalid_transition', 'refund_required'];
@@ -38,22 +39,13 @@ async function notify(userId: string, orderId: string, orderNo: number, status: 
   // deno-lint-ignore no-explicit-any
   const branchName = (o?.branch as any)?.name ?? '';
   const ready = status === 'ready';
-  const messages = tokens.map(({ token }) => ({
+  await sendPush(db, tokens.map(({ token }) => ({
     to: token,
-    sound: 'default',
     title: ready ? 'Siparişin hazır ☕' : 'Siparişin iptal edildi',
     body: ready ? `#${orderNo} ${branchName} şubesinde seni bekliyor. Afiyet olsun!`
                 : `#${orderNo} numaralı siparişin şube tarafından iptal edildi.`,
     data: { orderId, url: `cesmekahve://siparis/${orderId}` },
     channelId: 'orders',
-  }));
-  const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
-  const accessToken = Deno.env.get('EXPO_ACCESS_TOKEN');
-  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-  const res = await fetch('https://exp.host/--/api/v2/push/send', { method: 'POST', headers, body: JSON.stringify(messages) });
-  const result = await res.json().catch(() => null);
-  // Forget tokens of uninstalled apps.
-  const tickets: Array<{ status: string; details?: { error?: string } }> = result?.data ?? [];
-  const dead = tickets.map((t, i) => (t.details?.error === 'DeviceNotRegistered' ? messages[i].to : null)).filter(Boolean);
-  if (dead.length) await db.from('push_tokens').delete().in('token', dead as string[]);
+    priority: 'high',
+  })));
 }

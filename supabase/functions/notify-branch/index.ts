@@ -50,7 +50,6 @@ Deno.serve(async (req) => {
       body: text.length > 180 ? text.slice(0, 177) + '…' : text,
       data: { screen: 'staff', orderId: order.id, branchId: order.branch_id },
       channelId: 'new-orders',
-      sound: 'default',
       priority: 'high',
     })));
     return json({ sent });
