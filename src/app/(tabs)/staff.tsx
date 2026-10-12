@@ -5,13 +5,13 @@ import { Redirect, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { useQueryClient } from '@tanstack/react-query';
-import { BellOff, Check, ChefHat, ChevronRight, Leaf, ListChecks, PackageCheck, Recycle, ScanLine, Users, X } from 'lucide-react-native';
+import { BellOff, Check, ChefHat, ChevronRight, Leaf, ListChecks, PackageCheck, Recycle, ScanLine, UserRound, Users, X } from 'lucide-react-native';
 import { Txt } from '@/components/Txt';
 import { Button } from '@/components/Button';
 import { Badge } from '@/components/Badge';
 import { Card, TopBar } from '@/components/Layout';
 import { StaffHistory } from '@/components/StaffHistory';
-import { canManageBranch, staffSetStatus, useBranchQueue, useCatalogue } from '@/lib/api';
+import { canManageBranch, handlers, staffSetStatus, useBranchQueue, useCatalogue } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
 import { registerForStaffNotifications } from '@/lib/notifications';
 import { timeOf, tl } from '@/lib/format';
@@ -182,6 +182,7 @@ export default function StaffScreen() {
                         <Txt variant="caption" color="inkMuted">{timeOf(o.created_at)}</Txt>
                       </View>
                     </View>
+                    <HandledBy order={o} />
                     <View style={{ gap: 4, marginTop: space[2] }}>
                       {o.order_items?.map((i) => (
                         <View key={i.id} style={{ flexDirection: 'row', gap: space[2] }}>
@@ -224,6 +225,21 @@ export default function StaffScreen() {
         ) : null}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+/** In the queue: who picked the order up ("Ece K. hazırlıyor") and who marked it ready. */
+function HandledBy({ order }: { order: Order }) {
+  const h = handlers(order);
+  const text = order.status === 'preparing' && h.preparing ? `${h.preparing.name} hazırlıyor`
+    : order.status === 'ready' && h.ready ? `Hazırlayan: ${h.ready.name}`
+    : null;
+  if (!text) return null;
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: space[1] }}>
+      <UserRound size={14} color={color.inkMuted} strokeWidth={1.75} />
+      <Txt variant="caption" color="inkMuted">{text}</Txt>
+    </View>
   );
 }
 

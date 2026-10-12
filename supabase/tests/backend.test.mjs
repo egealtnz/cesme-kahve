@@ -479,6 +479,41 @@ await test('branch managers add and remove their own baristas by email; invites 
   }
 });
 
+await test('the branch sees which staff member accepted, prepared and handed over an order; customers do not', async () => {
+  const c = await newCustomer('Zeynep');
+  try {
+    const o = await rpc(c.client, 'place_order', { p_branch_id: 'pendik-marina', p_payment_method: 'store',
+      p_items: [{ product_id: 'su', quantity: 1 }] });
+    for (const st of ['preparing', 'ready', 'collected']) {
+      const r = await fn(staff, 'staff-order-status', { order_id: o.id, status: st });
+      assert.equal(r.status, 200, await r.clone().text());
+    }
+    const { data: seen, error } = await staff.client.from('orders').select('id, order_events(status, actor_id, actor_name)').eq('id', o.id).single();
+    assert.ifError(error);
+    const events = seen.order_events.map((e) => [e.status, e.actor_id, e.actor_name]);
+    assert.deepEqual(events, [
+      ['preparing', staff.id, 'Baristapendikmarina T.'],
+      ['ready', staff.id, 'Baristapendikmarina T.'],
+      ['collected', staff.id, 'Baristapendikmarina T.'],
+    ]);
+    const { data: mine } = await c.client.from('orders').select('id, order_events(status)').eq('id', o.id).single();
+    assert.deepEqual(mine.order_events, [], 'customers do not see staff names');
+    const { data: direct } = await c.client.from('order_events').select('*').eq('order_id', o.id);
+    assert.equal(direct.length, 0);
+    const { data: other } = await otherStaff.client.from('order_events').select('*').eq('order_id', o.id);
+    assert.equal(other.length, 0, 'other branches do not see them');
+
+    // a customer cancelling their own order is not a staff action
+    const o2 = await rpc(c.client, 'place_order', { p_branch_id: 'pendik-marina', p_payment_method: 'store',
+      p_items: [{ product_id: 'su', quantity: 1 }] });
+    await rpc(c.client, 'cancel_my_order', { p_order: o2.id });
+    const { count } = await admin.from('order_events').select('id', { count: 'exact', head: true }).eq('order_id', o2.id);
+    assert.equal(count, 0);
+  } finally {
+    await admin.auth.admin.deleteUser(c.id);
+  }
+});
+
 await test('deleting an account removes the person and keeps anonymous order records', async () => {
   const o = await rpc(b.client, 'place_order', { p_branch_id: 'pendik-marina', p_payment_method: 'store',
     p_items: [{ product_id: 'su', quantity: 1 }] });

@@ -30,3 +30,26 @@ export function formatPhone(digits: string): string {
   const d = digits.slice(0, 10);
   return [d.slice(0, 3), d.slice(3, 6), d.slice(6, 8), d.slice(8, 10)].filter(Boolean).join(' ');
 }
+
+/** Local calendar day of a timestamp, for grouping ("2026-10-12"). */
+export function dayKey(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** "Bugün", "Dün" or "10 Ekim Cumartesi" (with the year when it is not this year). */
+export function dayLabel(iso: string, now = new Date()): string {
+  const d = new Date(iso);
+  const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((start(now) - start(d)) / 86_400_000);
+  if (diff === 0) return 'Bugün';
+  if (diff === 1) return 'Dün';
+  return d.toLocaleDateString('tr-TR', {
+    day: 'numeric', month: 'long', weekday: 'long', ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}),
+  });
+}
+
+/** "12 Eki" */
+export function dayMonth(iso: string): string {
+  return new Date(iso).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+}

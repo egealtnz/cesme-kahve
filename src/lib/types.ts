@@ -37,8 +37,11 @@ export type Order = {
   cup_discount: number; total: number; rewards_used: number; stamps_earned: number;
   created_at: string; ready_at: string | null; collected_at: string | null; cancelled_at: string | null; cancel_reason: string | null;
   order_items?: OrderItem[];
+  /** Staff actions on the order (branch staff only). */
+  order_events?: OrderEvent[];
   branch?: Pick<Branch, 'name' | 'district' | 'city' | 'prep_minutes'>;
 };
+export type OrderEvent = { status: OrderStatus; actor_name: string | null; created_at: string };
 export type StaffRole = 'barista' | 'manager' | 'admin';
 export type StaffMembership = { branch_id: string | null; role: StaffRole };
 export type TeamMember = {

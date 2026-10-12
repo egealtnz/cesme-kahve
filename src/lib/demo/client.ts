@@ -38,6 +38,7 @@ type State = {
   profiles: Profile[];
   staff: { user_id: string; branch_id: string | null; role: 'barista' | 'manager' | 'admin'; created_at?: string }[];
   invites?: { email: string; branch_id: string; role: 'barista' | 'manager'; created_at: string }[];
+  events?: { order_id: string; status: Order['status']; actor_name: string | null; created_at: string }[];
   rewards: DemoReward[];
   orders: DemoOrder[];
   items: DemoItem[];
@@ -106,6 +107,12 @@ function seed(): State {
       { user_id: MANAGER_ID, branch_id: 'alacati', role: 'manager', created_at: ago(86400 * 90) },
     ],
     invites: [],
+    events: [
+      { order_id: 'o-1001', status: 'preparing', actor_name: 'Ece K.', created_at: ago(86400 * 3 - 60) },
+      { order_id: 'o-1001', status: 'ready', actor_name: 'Ece K.', created_at: ago(86400 * 3 - 300) },
+      { order_id: 'o-1001', status: 'collected', actor_name: 'Can Ö.', created_at: ago(86400 * 3 - 600) },
+      { order_id: 'o-1003', status: 'preparing', actor_name: 'Ece K.', created_at: ago(200) },
+    ],
     rewards: [{
       id: uuid(), user_id: demo, code: DEMO_REWARD_CODE, earned_at: ago(86400 * 4), expires_at: inDays(86),
       reserved_order_id: null, used_at: null, used_branch_id: null, source_order_id: null,
@@ -143,6 +150,7 @@ const ready: Promise<void> = AsyncStorage.getItem(STORE_KEY)
     if (saved?.v === 1) {
       state = saved;
       state.invites ??= [];
+      state.events ??= [];
       if (!state.users.some((u) => u.id === MANAGER_ID)) {
         const fresh = seed();
         state.users.push(fresh.users.find((u) => u.id === MANAGER_ID)!);
@@ -161,6 +169,17 @@ const uid = () => state.sessionUserId;
 const isStaff = (branch: string | null | undefined) =>
   !!uid() && state.staff.some((s) => s.user_id === uid() && (s.branch_id === null || s.branch_id === branch));
 const profileOf = (id: string) => state.profiles.find((p) => p.id === id);
+const SIM_BARISTA = 'Ece K.';
+/** "Ece K." for the signed-in staff member. */
+const staffName = () => {
+  const pr = profileOf(uid() ?? '');
+  if (!pr) return 'Personel';
+  const initial = pr.last_name && pr.last_name !== '-' ? ' ' + pr.last_name[0] + '.' : '';
+  return (pr.first_name + initial).trim() || 'Personel';
+};
+const recordEvent = (orderId: string, status: Order['status'], name: string, at = nowIso()) => {
+  (state.events ??= []).push({ order_id: orderId, status, actor_name: name, created_at: at });
+};
 const isAdmin = () => !!uid() && state.staff.some((s) => s.user_id === uid() && s.role === 'admin');
 const canManage = (branch: string) =>
   !!uid() && state.staff.some((s) => s.user_id === uid() && (s.role === 'admin' || (s.role === 'manager' && s.branch_id === branch)));
@@ -207,10 +226,10 @@ function tick() {
     if (!o.sim || !o.sim_at) continue;
     const t = (now - Date.parse(o.sim_at)) / 1000;
     const at = (s: number) => new Date(Date.parse(o.sim_at!) + s * 1000).toISOString();
-    if (o.status === 'placed' && t >= SIM_PREPARING) { o.status = 'preparing'; changed = true; }
-    if (o.status === 'preparing' && t >= SIM_READY) { o.status = 'ready'; o.ready_at = at(SIM_READY); changed = true; }
+    if (o.status === 'placed' && t >= SIM_PREPARING) { o.status = 'preparing'; recordEvent(o.id, 'preparing', SIM_BARISTA, at(SIM_PREPARING)); changed = true; }
+    if (o.status === 'preparing' && t >= SIM_READY) { o.status = 'ready'; o.ready_at = at(SIM_READY); recordEvent(o.id, 'ready', SIM_BARISTA, o.ready_at); changed = true; }
     if (o.status === 'ready' && t >= SIM_COLLECTED) {
-      o.status = 'collected'; o.collected_at = at(SIM_COLLECTED);
+      o.status = 'collected'; o.collected_at = at(SIM_COLLECTED); recordEvent(o.id, 'collected', SIM_BARISTA, o.collected_at);
       if (o.payment_method === 'store' && o.payment_status !== 'paid') { o.payment_status = 'paid'; o.paid_at = o.collected_at; }
       awardStamps(o); o.sim = false; changed = true;
     }
@@ -246,6 +265,12 @@ function project(row: Row, table: string, cols: string): Row {
       out = { ...out, ...row };
     } else if (embed && table === 'orders' && embed[2] === 'order_items') {
       out[embed[1] ?? 'order_items'] = state.items.filter((i) => i.order_id === row.id).sort((a, b) => a.id - b.id);
+    } else if (embed && table === 'orders' && embed[2] === 'order_events') {
+      const fields = embed[3].split(',').map((f) => f.trim());
+      out[embed[1] ?? 'order_events'] = isStaff(row.branch_id as string)
+        ? (state.events ?? []).filter((e) => e.order_id === row.id)
+          .map((e) => Object.fromEntries(fields.map((f) => [f, (e as Row)[f]])))
+        : [];
     } else if (embed && table === 'orders' && embed[2] === 'branches') {
       const b = (catalogue.branches as Row[]).find((x) => x.id === row.branch_id) ?? {};
       const fields = embed[3].split(',').map((f) => f.trim());
@@ -546,6 +571,7 @@ const functions: Record<string, (body: Row) => unknown> = {
     if (!ok) throw new DemoError(`invalid_transition:${o.status}->${to}`);
     if (to === 'cancelled' && o.payment_status === 'paid' && o.total > 0) throw new DemoError('refund_required');
     o.status = to; o.sim = false;
+    recordEvent(o.id, to, staffName());
     if (to === 'ready') o.ready_at = nowIso();
     if (to === 'collected') {
       o.collected_at = nowIso();

@@ -79,7 +79,7 @@ Yerelde gönderilen doğrulama e-postaları `http://127.0.0.1:54324` (Inbucket) 
 ```bash
 npm run typecheck        # TypeScript
 npm run lint             # ESLint (expo lint)
-npm run test:backend     # 25 uçtan uca test: RLS, fiyat, damga/hediye, personel ve ekip yetkileri, ödeme, iade, şube bildirimi, hesap silme
+npm run test:backend     # 26 uçtan uca test: RLS, fiyat, damga/hediye, personel ve ekip yetkileri, ödeme, iade, şube bildirimi, hesap silme
 ```
 
 `test:backend` yalnızca **yerel veya staging** projede çalıştırılmalı; test kullanıcıları oluşturup siler:
@@ -156,7 +156,7 @@ join auth.users u on u.id = s.user_id order by s.branch_id nulls first, s.role;
 
 Şube kimlikleri: `select id, name from public.branches order by sort;`
 
-Personel hesabıyla giriş yapıldığında alt menüde **Şube** sekmesi görünür: sipariş kuyruğu (Yeni → Hazırlanıyor → Hazır → Teslim edildi), **Geçmiş** (bugün / 7 / 30 günün teslim edilen ve iptal edilen siparişleri, ciro ve kahve sayısıyla), QR okutma (hediye kahve kullanımı, kasada damga ekleme), tükenen ürünler ve (müdür/yöneticiler için) **Ekip**. Baristalar ve müdürler yalnızca kendi şubelerini görür; yönetici tüm şubeler arasında geçiş yapabilir.
+Personel hesabıyla giriş yapıldığında alt menüde **Şube** sekmesi görünür: sipariş kuyruğu (Yeni → Hazırlanıyor → Hazır → Teslim edildi), **Geçmiş** (bugün / 7 / 30 günün teslim edilen ve iptal edilen siparişleri gün gün, tarih ve saatiyle; ciro ve kahve sayısı; her siparişi kimin kabul ettiği, hazırladığı ve teslim ettiği), QR okutma (hediye kahve kullanımı, kasada damga ekleme), tükenen ürünler ve (müdür/yöneticiler için) **Ekip**. Baristalar ve müdürler yalnızca kendi şubelerini görür; yönetici tüm şubeler arasında geçiş yapabilir.
 
 Şube ekranı ilk açıldığında bildirim izni ister. İzin verilen telefonlara, şubeye yeni sipariş düştüğünde (kasada ödemede hemen, kartla ödemede ödeme alınınca) uygulama kapalı olsa da "Yeni sipariş #1234 · Ayşe" bildirimi gelir; dokununca Şube ekranı açılır. Bildirim o şubenin barista ve müdürlerine gider (tüm şubeleri gören yöneticiye gitmez). Çıkış yapılan telefona bildirim gönderilmez. Android'de bu bildirimler ayrı bir kanaldadır ("Yeni siparişler (şube)"), telefon ayarlarından ayrıca sessize alınabilir.
 

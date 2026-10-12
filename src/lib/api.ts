@@ -205,13 +205,25 @@ export function useCancelOrder() {
 // ---------------------------------------------------------------- staff
 const QUEUE: OrderStatus[] = ['placed', 'preparing', 'ready'];
 
+/** Branch screens also load who handled each order (visible to that branch's staff only). */
+const STAFF_ORDER_SELECT = '*, order_items(*), order_events(status, actor_name, created_at)';
+
+/** Who did what on an order, latest action per status: { preparing: 'Ece K.', ready: 'Ece K.', ... }. */
+export function handlers(o: Order): Partial<Record<OrderStatus, { name: string; at: string }>> {
+  const out: Partial<Record<OrderStatus, { name: string; at: string }>> = {};
+  for (const e of [...(o.order_events ?? [])].sort((a, b) => a.created_at.localeCompare(b.created_at))) {
+    out[e.status] = { name: e.actor_name ?? 'Eski çalışan', at: e.created_at };
+  }
+  return out;
+}
+
 export function useBranchQueue(branchId: string | null) {
   const qc = useQueryClient();
   const query = useQuery({
     queryKey: ['queue', branchId],
     enabled: !!branchId,
     refetchInterval: IS_DEMO ? 4_000 : 30_000,
-    queryFn: async () => (await must(supabase.from('orders').select('*, order_items(*)')
+    queryFn: async () => (await must(supabase.from('orders').select(STAFF_ORDER_SELECT)
       .eq('branch_id', branchId!).in('status', QUEUE).order('created_at'))) as Order[],
   });
   useEffect(() => {
@@ -231,7 +243,7 @@ export function useBranchHistory(branchId: string | null, sinceIso: string) {
   return useQuery({
     queryKey: ['history', branchId, sinceIso],
     enabled: !!branchId,
-    queryFn: async () => (await must(supabase.from('orders').select('*, order_items(*)')
+    queryFn: async () => (await must(supabase.from('orders').select(STAFF_ORDER_SELECT)
       .eq('branch_id', branchId!).in('status', ['collected', 'cancelled']).gte('created_at', sinceIso)
       .order('created_at', { ascending: false }).limit(200))) as Order[],
   });
