@@ -53,7 +53,7 @@ Mağazada satıcı adı olarak şirket unvanı görünür; kişisel hesap açmay
 ```bash
 supabase login
 supabase link --project-ref <proje-ref>        # Dashboard → Project Settings → General
-supabase db push                                # 6 migration: şema, iş kuralları, güvenlik, iade, kart anahtarı, şube bildirimi
+supabase db push                                # 7 migration: şema, iş kuralları, güvenlik, iade, kart anahtarı, şube bildirimi, ekip yönetimi
 ```
 
 Ardından SQL Editor'da, yeni siparişlerin baristalara bildirim olarak gitmesi için:
@@ -217,7 +217,8 @@ Gerçek cihazda tam test listesi:
 - [ ] Hesabımı sil → aynı e-postayla tekrar giriş yapılamıyor
 - [ ] Uçak modunda uygulamayı aç → hata mesajları anlaşılır
 
-İlk personel hesabını README'deki "Personel ekleme" SQL'iyle ekleyin.
+İşletme sahibini README'deki "Personel ve yetkiler" bölümündeki SQL ile bir kez **yönetici** yapın. Şube müdürlerini ve baristaları bundan sonra uygulamadaki **Şube → Ekip** ekranından ekleyin.
+- [ ] Yönetici hesabıyla bir şubeye müdür ekle → müdür hesabıyla o şubeye barista ekle, çıkar; başka şube görünmüyor
 
 ---
 

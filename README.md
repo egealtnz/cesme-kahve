@@ -79,7 +79,7 @@ Yerelde gönderilen doğrulama e-postaları `http://127.0.0.1:54324` (Inbucket) 
 ```bash
 npm run typecheck        # TypeScript
 npm run lint             # ESLint (expo lint)
-npm run test:backend     # 24 uçtan uca test: RLS, fiyat, damga/hediye, personel, ödeme, iade, şube bildirimi, hesap silme
+npm run test:backend     # 25 uçtan uca test: RLS, fiyat, damga/hediye, personel ve ekip yetkileri, ödeme, iade, şube bildirimi, hesap silme
 ```
 
 `test:backend` yalnızca **yerel veya staging** projede çalıştırılmalı; test kullanıcıları oluşturup siler:
@@ -96,6 +96,7 @@ Uygulama, sunucu ve hesap olmadan da çalışabilir: `EXPO_PUBLIC_DEMO=1` ile de
 |---|---|---|
 | Müşteri (7 damga, 1 hediye kahve) | `demo@cesmekahve.com` | `demo1234` |
 | Barista (Alaçatı şubesi) | `barista@cesmekahve.com` | `demo1234` |
+| Şube müdürü (Alaçatı, ekibi yönetir) | `mudur@cesmekahve.com` | `demo1234` |
 
 Yeni üyelikte e-posta doğrulama kodu her zaman `123456`. Kasada okutma ekranında örnek kodlar: kahve kartı `A3VTLQBSR6`, hediye kahve `K7M2QX`. Profil sayfasının en altındaki **Önizlemeyi sıfırla** her şeyi başa döndürür.
 
@@ -124,29 +125,40 @@ Tek dosyalık önizleme internetsiz çalışır; çift tıklayıp tarayıcıda a
 
 Tek bir şubede ürün bittiğinde baristalar uygulamadaki **Şube → Tükenenler** ekranını kullanır.
 
-### Personel ekleme
+### Personel ve yetkiler
 
-Personel önce uygulamadan normal üye olur. Ardından SQL Editor'da:
+| Görev | Ne görür, ne yapar |
+|---|---|
+| **Yönetici** (`admin`) | Tüm şubeler. Her şubeye şube müdürü ve barista ekler/çıkarır. |
+| **Şube müdürü** (`manager`) | Kendi şubesi. Barista ne yapıyorsa + kendi şubesine barista ekler/çıkarır. |
+| **Barista** (`barista`) | Kendi şubesi: sipariş kuyruğu, geçmiş, QR okutma, tükenenler. |
+
+Günlük kullanımda SQL gerekmez: yönetici ya da şube müdürü uygulamada **Şube → Ekip** ekranından e-posta yazıp **Ekibe ekle**'ye dokunur.
+
+- Kişinin hesabı varsa hemen eklenir; uygulamayı bir sonraki açışında **Şube** sekmesini görür.
+- Hesabı yoksa davet bekler. Bu e-postayla üye olup 6 haneli kodla doğruladığı anda otomatik olarak ekibe katılır (başkası o e-postayı doğrulayamayacağı için davet yanlış kişiye geçemez). Bekleyen davetler aynı ekranda listelenir ve geri alınabilir.
+- **Ekipten çıkar** yalnızca Şube ekranı erişimini kapatır ve yeni sipariş bildirimlerini durdurur; kişinin müşteri hesabı ve kahve kartı kalır.
+- Müdürler başka şubeyi göremez, müdür atayamaz, müdürleri ya da kendilerini çıkaramaz. Bu kurallar veritabanında uygulanır (`supabase/migrations/…_branch_team.sql`), uygulama yalnızca gösterir.
+
+**İlk yöneticiyi** (işletme sahibi) bir kez SQL Editor'dan ekleyin; sonrası uygulamadan yapılır:
 
 ```sql
--- barista: tek şube
 insert into public.staff_members (user_id, branch_id, role)
-select id, 'alacati', 'barista' from auth.users where email = 'barista@ornek.com';
+select id, null, 'admin' from auth.users where email = 'sahip@ornek.com';
+```
 
--- yönetici: tüm şubeler (branch_id boş)
-insert into public.staff_members (user_id, branch_id, role)
-select id, null, 'admin' from auth.users where email = 'yonetici@ornek.com';
+Kim nerede çalışıyor (kontrol için):
 
--- personel çıkarma
-delete from public.staff_members
-where user_id = (select id from auth.users where email = 'barista@ornek.com');
+```sql
+select u.email, s.branch_id, s.role from public.staff_members s
+join auth.users u on u.id = s.user_id order by s.branch_id nulls first, s.role;
 ```
 
 Şube kimlikleri: `select id, name from public.branches order by sort;`
 
-Personel hesabıyla giriş yapıldığında alt menüde **Şube** sekmesi görünür: sipariş kuyruğu (Yeni → Hazırlanıyor → Hazır → Teslim edildi), **Geçmiş** (bugün / 7 / 30 günün teslim edilen ve iptal edilen siparişleri, ciro ve kahve sayısıyla), QR okutma (hediye kahve kullanımı, kasada damga ekleme) ve tükenen ürünler. Baristalar yalnızca kendi şubelerini görür; `admin` rolü tüm şubeler arasında geçiş yapabilir.
+Personel hesabıyla giriş yapıldığında alt menüde **Şube** sekmesi görünür: sipariş kuyruğu (Yeni → Hazırlanıyor → Hazır → Teslim edildi), **Geçmiş** (bugün / 7 / 30 günün teslim edilen ve iptal edilen siparişleri, ciro ve kahve sayısıyla), QR okutma (hediye kahve kullanımı, kasada damga ekleme), tükenen ürünler ve (müdür/yöneticiler için) **Ekip**. Baristalar ve müdürler yalnızca kendi şubelerini görür; yönetici tüm şubeler arasında geçiş yapabilir.
 
-Şube ekranı ilk açıldığında bildirim izni ister. İzin verilen telefonlara, şubeye yeni sipariş düştüğünde (kasada ödemede hemen, kartla ödemede ödeme alınınca) uygulama kapalı olsa da "Yeni sipariş #1234 · Ayşe" bildirimi gelir; dokununca Şube ekranı açılır. Bildirim yalnızca o şubenin personeline gider (tüm şubeleri gören `admin` hesaplarına gitmez). Çıkış yapılan telefona bildirim gönderilmez. Android'de bu bildirimler ayrı bir kanaldadır ("Yeni siparişler (şube)"), telefon ayarlarından ayrıca sessize alınabilir.
+Şube ekranı ilk açıldığında bildirim izni ister. İzin verilen telefonlara, şubeye yeni sipariş düştüğünde (kasada ödemede hemen, kartla ödemede ödeme alınınca) uygulama kapalı olsa da "Yeni sipariş #1234 · Ayşe" bildirimi gelir; dokununca Şube ekranı açılır. Bildirim o şubenin barista ve müdürlerine gider (tüm şubeleri gören yöneticiye gitmez). Çıkış yapılan telefona bildirim gönderilmez. Android'de bu bildirimler ayrı bir kanaldadır ("Yeni siparişler (şube)"), telefon ayarlarından ayrıca sessize alınabilir.
 
 ### Kartla ödenmiş siparişin iptali
 

@@ -5,13 +5,13 @@ import { Redirect, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { useQueryClient } from '@tanstack/react-query';
-import { BellOff, Check, ChefHat, Leaf, ListChecks, PackageCheck, Recycle, ScanLine, X } from 'lucide-react-native';
+import { BellOff, Check, ChefHat, ChevronRight, Leaf, ListChecks, PackageCheck, Recycle, ScanLine, Users, X } from 'lucide-react-native';
 import { Txt } from '@/components/Txt';
 import { Button } from '@/components/Button';
 import { Badge } from '@/components/Badge';
 import { Card, TopBar } from '@/components/Layout';
 import { StaffHistory } from '@/components/StaffHistory';
-import { staffSetStatus, useBranchQueue, useCatalogue } from '@/lib/api';
+import { canManageBranch, staffSetStatus, useBranchQueue, useCatalogue } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
 import { registerForStaffNotifications } from '@/lib/notifications';
 import { timeOf, tl } from '@/lib/format';
@@ -136,6 +136,19 @@ export default function StaffScreen() {
             onPress={() => branchId && router.push({ pathname: '/staff/menu', params: { branch: branchId } })} />
         </View>
 
+        {branchId && canManageBranch(staff, branchId) ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="Ekip: barista ekle ya da çıkar"
+            onPress={() => router.push({ pathname: '/staff/team', params: { branch: branchId } })}
+            style={({ pressed }) => [styles.teamRow, pressed && { backgroundColor: color.surfaceMuted }]}>
+            <View style={styles.teamIcon}><Users size={20} color={color.secondaryInk} strokeWidth={1.75} /></View>
+            <View style={{ flex: 1 }}>
+              <Txt variant="label">Ekip</Txt>
+              <Txt variant="bodySm" color="inkMuted">{isAdmin ? 'Müdür ve barista ekle ya da çıkar' : 'Barista ekle ya da çıkar'}</Txt>
+            </View>
+            <ChevronRight size={20} color={color.inkMuted} strokeWidth={1.75} />
+          </Pressable>
+        ) : null}
+
         <View style={styles.segment} accessibilityRole="tablist">
           {([['queue', 'Sıradakiler' + (queue.data?.length ? ' (' + queue.data.length + ')' : '')], ['history', 'Geçmiş']] as const).map(([key, label]) => (
             <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: view === key }} onPress={() => setView(key)}
@@ -218,6 +231,11 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.background },
   chip: { height: 36, paddingHorizontal: space[4], borderRadius: radius.full, backgroundColor: color.surfaceMuted, justifyContent: 'center' },
   tools: { flexDirection: 'row', gap: space[3], marginTop: space[4] },
+  teamRow: {
+    flexDirection: 'row', alignItems: 'center', gap: space[3], marginTop: space[3], padding: space[3],
+    borderRadius: radius.md, backgroundColor: color.surface, boxShadow: '0px 1px 3px rgba(0, 40, 62, 0.10)',
+  },
+  teamIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: color.secondarySoft, alignItems: 'center', justifyContent: 'center' },
   pushOff: {
     flexDirection: 'row', alignItems: 'center', gap: space[3], marginTop: space[4], padding: space[4],
     borderRadius: radius.lg, backgroundColor: color.warningSoft,

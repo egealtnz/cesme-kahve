@@ -4,7 +4,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { callFunction, IS_DEMO, supabase } from './supabase';
 import type {
-  Branch, Campaign, Category, Milk, Order, OrderStatus, PaymentMethod, Product, Profile, Reward, Settings, StaffMembership,
+  Branch, BranchTeam, Campaign, Category, Milk, Order, OrderStatus, PaymentMethod, Product, Profile, Reward, Settings, StaffMembership,
 } from './types';
 
 async function must<T>(p: PromiseLike<{ data: T | null; error: unknown }>): Promise<T> {
@@ -252,6 +252,40 @@ export async function staffAddStamps(memberCode: string, branchId: string, coffe
   const { data, error } = await supabase.rpc('staff_add_counter_stamps', { p_member_code: memberCode, p_branch: branchId, p_coffees: coffees });
   if (error) throw new Error(error.message);
   return data as { first_name: string; stamps: number; rewards_earned: number };
+}
+
+// ---------------------------------------------------------------- branch team (managers and admins)
+/** Admins manage every branch; a manager manages their own branch. */
+export function canManageBranch(staff: StaffMembership[], branchId: string | null | undefined): boolean {
+  return staff.some((s) => s.role === 'admin' || (s.role === 'manager' && !!branchId && s.branch_id === branchId));
+}
+
+export function useBranchTeam(branchId: string | undefined) {
+  return useQuery({
+    queryKey: ['team', branchId],
+    enabled: !!branchId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('branch_team', { p_branch: branchId });
+      if (error) throw new Error(error.message);
+      return data as BranchTeam;
+    },
+  });
+}
+
+export async function addBranchStaff(branchId: string, email: string, role: 'barista' | 'manager' = 'barista') {
+  const { data, error } = await supabase.rpc('branch_add_staff', { p_branch: branchId, p_email: email, p_role: role });
+  if (error) throw new Error(error.message);
+  return (data as { status: 'added' | 'invited' | 'updated' }).status;
+}
+
+export async function removeBranchStaff(branchId: string, userId: string) {
+  const { error } = await supabase.rpc('branch_remove_staff', { p_branch: branchId, p_user: userId });
+  if (error) throw new Error(error.message);
+}
+
+export async function cancelBranchInvite(branchId: string, email: string) {
+  const { error } = await supabase.rpc('branch_cancel_invite', { p_branch: branchId, p_email: email });
+  if (error) throw new Error(error.message);
 }
 
 export async function staffSetSoldOut(branchId: string, productId: string, soldOut: boolean) {

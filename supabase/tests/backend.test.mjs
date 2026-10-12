@@ -400,6 +400,85 @@ await test('a new order is announced once to that branch\'s staff only (FCM on A
   }
 });
 
+await test('branch managers add and remove their own baristas by email; invites wait for email confirmation', async () => {
+  const mgr = await newCustomer('Mudur');
+  const boss = await newCustomer('Patron');
+  const nb = await newCustomer('Yenibarista');
+  const extra = [];
+  try {
+    await admin.from('staff_members').insert([
+      { user_id: mgr.id, branch_id: 'pendik-marina', role: 'manager' },
+      { user_id: boss.id, branch_id: null, role: 'admin' },
+    ]);
+    const err = (u, fn, args) => rpcError(u.client, fn, args);
+
+    // who may manage what
+    assert.equal(await rpc(mgr.client, 'can_manage_branch', { p_branch: 'pendik-marina' }), true);
+    assert.equal(await rpc(mgr.client, 'can_manage_branch', { p_branch: 'alacati' }), false);
+    assert.equal(await rpc(staff.client, 'can_manage_branch', { p_branch: 'pendik-marina' }), false, 'baristas cannot');
+    assert.equal(await rpc(boss.client, 'can_manage_branch', { p_branch: 'alacati' }), true, 'admin manages every branch');
+    assert.match(await err(staff, 'branch_team', { p_branch: 'pendik-marina' }), /not_allowed/);
+    assert.match(await err(mgr, 'branch_team', { p_branch: 'alacati' }), /not_allowed/);
+    assert.match(await err(nb, 'branch_add_staff', { p_branch: 'pendik-marina', p_email: nb.email }), /not_allowed/);
+
+    // manager adds an existing account (email in any case) → barista right away
+    assert.deepEqual(await rpc(mgr.client, 'branch_add_staff', { p_branch: 'pendik-marina', p_email: '  ' + nb.email.toUpperCase() }), { status: 'added' });
+    assert.match(await err(mgr, 'branch_add_staff', { p_branch: 'pendik-marina', p_email: nb.email }), /already_staff/);
+    assert.equal(await rpc(nb.client, 'is_staff', { p_branch: 'pendik-marina' }), true);
+    assert.equal(await rpc(nb.client, 'is_staff', { p_branch: 'alacati' }), false);
+    let team = await rpc(mgr.client, 'branch_team', { p_branch: 'pendik-marina' });
+    const row = team.members.find((m) => m.user_id === nb.id);
+    assert.equal(row.role, 'barista'); assert.equal(row.email, nb.email); assert.equal(row.first_name, 'Yenibarista');
+    assert.equal(team.members.find((m) => m.user_id === mgr.id).is_me, true);
+
+    // managers cannot hand out manager rights, touch other branches, remove managers or themselves
+    assert.match(await err(mgr, 'branch_add_staff', { p_branch: 'pendik-marina', p_email: b.email, p_role: 'manager' }), /not_allowed/);
+    assert.match(await err(mgr, 'branch_add_staff', { p_branch: 'alacati', p_email: b.email }), /not_allowed/);
+    assert.match(await err(mgr, 'branch_add_staff', { p_branch: 'pendik-marina', p_email: 'not-an-email' }), /invalid_email/);
+    assert.match(await err(mgr, 'branch_remove_staff', { p_branch: 'pendik-marina', p_user: mgr.id }), /cannot_remove_self/);
+    assert.match(await err(mgr, 'branch_remove_staff', { p_branch: 'alacati', p_user: otherStaff.id }), /not_allowed/);
+
+    // invite for an email without an account: becomes staff when that address is confirmed
+    const invitedEmail = `test+davet${stamp}@example.com`;
+    assert.deepEqual(await rpc(mgr.client, 'branch_add_staff', { p_branch: 'pendik-marina', p_email: invitedEmail }), { status: 'invited' });
+    team = await rpc(mgr.client, 'branch_team', { p_branch: 'pendik-marina' });
+    assert.deepEqual(team.invites.map((i) => [i.email, i.role]), [[invitedEmail, 'barista']]);
+    const { data: unconfirmed } = await admin.auth.admin.createUser({ email: invitedEmail, password: 'Kahve2026!', email_confirm: false });
+    extra.push(unconfirmed.user.id);
+    let { count } = await admin.from('staff_members').select('id', { count: 'exact', head: true }).eq('user_id', unconfirmed.user.id);
+    assert.equal(count, 0, 'not staff before the email is confirmed');
+    await admin.auth.admin.updateUserById(unconfirmed.user.id, { email_confirm: true });
+    ({ count } = await admin.from('staff_members').select('id', { count: 'exact', head: true }).eq('user_id', unconfirmed.user.id).eq('branch_id', 'pendik-marina').eq('role', 'barista'));
+    assert.equal(count, 1, 'invite claimed on confirmation');
+    team = await rpc(mgr.client, 'branch_team', { p_branch: 'pendik-marina' });
+    assert.equal(team.invites.length, 0);
+
+    // cancelling an invite
+    await rpc(mgr.client, 'branch_add_staff', { p_branch: 'pendik-marina', p_email: `test+vazgec${stamp}@example.com` });
+    await rpc(mgr.client, 'branch_cancel_invite', { p_branch: 'pendik-marina', p_email: `test+vazgec${stamp}@example.com` });
+    assert.equal((await rpc(mgr.client, 'branch_team', { p_branch: 'pendik-marina' })).invites.length, 0);
+
+    // removing a barista takes their branch access away
+    await rpc(mgr.client, 'branch_remove_staff', { p_branch: 'pendik-marina', p_user: nb.id });
+    assert.equal(await rpc(nb.client, 'is_staff', { p_branch: 'pendik-marina' }), false);
+
+    // admin: assigns a manager to any branch, can change roles and remove managers
+    assert.deepEqual(await rpc(boss.client, 'branch_add_staff', { p_branch: 'alacati', p_email: nb.email, p_role: 'manager' }), { status: 'added' });
+    assert.equal(await rpc(nb.client, 'can_manage_branch', { p_branch: 'alacati' }), true);
+    assert.deepEqual(await rpc(boss.client, 'branch_add_staff', { p_branch: 'alacati', p_email: nb.email, p_role: 'barista' }), { status: 'updated' });
+    assert.equal(await rpc(nb.client, 'can_manage_branch', { p_branch: 'alacati' }), false);
+    await rpc(boss.client, 'branch_add_staff', { p_branch: 'alacati', p_email: nb.email, p_role: 'manager' });
+    await rpc(boss.client, 'branch_remove_staff', { p_branch: 'alacati', p_user: nb.id });
+    assert.equal(await rpc(nb.client, 'is_staff', { p_branch: 'alacati' }), false);
+
+    // the invites table is not readable directly
+    const { data: direct } = await mgr.client.from('staff_invites').select('*');
+    assert.ok(!direct?.length, 'staff_invites only through functions');
+  } finally {
+    for (const id of [mgr.id, boss.id, nb.id, ...extra]) await admin.auth.admin.deleteUser(id);
+  }
+});
+
 await test('deleting an account removes the person and keeps anonymous order records', async () => {
   const o = await rpc(b.client, 'place_order', { p_branch_id: 'pendik-marina', p_payment_method: 'store',
     p_items: [{ product_id: 'su', quantity: 1 }] });

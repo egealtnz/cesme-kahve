@@ -11,7 +11,7 @@ import { errorMessage } from '@/lib/errors';
 import { goNext } from '@/lib/nav';
 import { color, space } from '@/theme/tokens';
 import { DemoNote } from '@/components/Demo';
-import { DEMO_CUSTOMER, DEMO_STAFF } from '@/lib/demo/constants';
+import { DEMO_CUSTOMER, DEMO_MANAGER, DEMO_STAFF } from '@/lib/demo/constants';
 
 export default function SignIn() {
   const { next } = useLocalSearchParams<{ next?: string }>();
@@ -49,8 +49,9 @@ export default function SignIn() {
         <DemoNote actions={<>
           <Button label="Müşteri hesabı" variant="secondary" size="sm" onPress={() => { setEmail(DEMO_CUSTOMER.email); setPassword(DEMO_CUSTOMER.password); }} />
           <Button label="Barista hesabı" variant="secondary" size="sm" onPress={() => { setEmail(DEMO_STAFF.email); setPassword(DEMO_STAFF.password); }} />
+          <Button label="Müdür hesabı" variant="secondary" size="sm" onPress={() => { setEmail(DEMO_MANAGER.email); setPassword(DEMO_MANAGER.password); }} />
         </>}>
-          Örnek hesaplardan birini seçip “Giriş yap”a dokun. Barista hesabı Alaçatı şubesinin ekranını açar. Şifre: demo1234
+          Örnek hesaplardan birini seçip “Giriş yap”a dokun. Barista ve müdür hesapları Alaçatı şubesinin ekranını açar; müdür ekibi de yönetir. Şifre: demo1234
         </DemoNote>
         <Field label="E-posta" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none"
           autoComplete="email" textContentType="emailAddress" placeholder="ad@ornek.com" />

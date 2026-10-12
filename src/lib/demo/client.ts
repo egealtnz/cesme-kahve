@@ -13,7 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { priceCart } from '../pricing';
 import type { Milk, Order, OrderItem, Product, Profile, Reward, Settings } from '../types';
 import catalogue from './catalogue.json';
-import { DEMO_CODE, DEMO_CUSTOMER, DEMO_MEMBER_CODE, DEMO_REWARD_CODE, DEMO_STAFF } from './constants';
+import { DEMO_CODE, DEMO_CUSTOMER, DEMO_MANAGER, DEMO_MEMBER_CODE, DEMO_REWARD_CODE, DEMO_STAFF } from './constants';
 
 
 const STORE_KEY = 'ck.demo.v2';
@@ -36,7 +36,8 @@ type State = {
   v: 1;
   users: User[];
   profiles: Profile[];
-  staff: { user_id: string; branch_id: string | null; role: 'barista' | 'manager' | 'admin' }[];
+  staff: { user_id: string; branch_id: string | null; role: 'barista' | 'manager' | 'admin'; created_at?: string }[];
+  invites?: { email: string; branch_id: string; role: 'barista' | 'manager'; created_at: string }[];
   rewards: DemoReward[];
   orders: DemoOrder[];
   items: DemoItem[];
@@ -64,6 +65,8 @@ const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 const normalizeCode = (raw: unknown) => String(raw ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 // ---------------------------------------------------------------- initial data
+const MANAGER_ID = 'u-manager';
+
 function seed(): State {
   const demo = 'u-demo', barista = 'u-barista', mert = 'u-mert', selin = 'u-selin';
   const profile = (id: string, first: string, last: string, code: string, stamps: number, extra: Partial<Profile> = {}): Profile => ({
@@ -89,14 +92,20 @@ function seed(): State {
     users: [
       { id: demo, email: DEMO_CUSTOMER.email, password: DEMO_CUSTOMER.password, confirmed: true, meta: {} },
       { id: barista, email: DEMO_STAFF.email, password: DEMO_STAFF.password, confirmed: true, meta: {} },
+      { id: MANAGER_ID, email: DEMO_MANAGER.email, password: DEMO_MANAGER.password, confirmed: true, meta: {} },
     ],
     profiles: [
       profile(demo, 'Deniz', 'Yılmaz', DEMO_MEMBER_CODE, 7, { favorite_branch_id: 'alacati' }),
       profile(barista, 'Ece', 'Kaya', 'B7RQ2MXK4T', 0),
+      profile(MANAGER_ID, 'Can', 'Öztürk', 'C5NW8KQT3M', 0),
       profile(mert, 'Mert', 'Aydın', 'M4KX7PRT2B', 3),
       profile(selin, 'Selin', 'Demir', 'S9HW3NCE6Q', 5),
     ],
-    staff: [{ user_id: barista, branch_id: 'alacati', role: 'barista' }],
+    staff: [
+      { user_id: barista, branch_id: 'alacati', role: 'barista', created_at: ago(86400 * 40) },
+      { user_id: MANAGER_ID, branch_id: 'alacati', role: 'manager', created_at: ago(86400 * 90) },
+    ],
+    invites: [],
     rewards: [{
       id: uuid(), user_id: demo, code: DEMO_REWARD_CODE, earned_at: ago(86400 * 4), expires_at: inDays(86),
       reserved_order_id: null, used_at: null, used_branch_id: null, source_order_id: null,
@@ -131,7 +140,16 @@ const ready: Promise<void> = AsyncStorage.getItem(STORE_KEY)
   .then((raw) => {
     if (!raw) return;
     const saved = JSON.parse(raw) as State;
-    if (saved?.v === 1) state = saved;
+    if (saved?.v === 1) {
+      state = saved;
+      state.invites ??= [];
+      if (!state.users.some((u) => u.id === MANAGER_ID)) {
+        const fresh = seed();
+        state.users.push(fresh.users.find((u) => u.id === MANAGER_ID)!);
+        state.profiles.push(fresh.profiles.find((x) => x.id === MANAGER_ID)!);
+        state.staff.push(fresh.staff.find((x) => x.user_id === MANAGER_ID)!);
+      }
+    }
   })
   .catch(() => undefined);
 
@@ -143,6 +161,9 @@ const uid = () => state.sessionUserId;
 const isStaff = (branch: string | null | undefined) =>
   !!uid() && state.staff.some((s) => s.user_id === uid() && (s.branch_id === null || s.branch_id === branch));
 const profileOf = (id: string) => state.profiles.find((p) => p.id === id);
+const isAdmin = () => !!uid() && state.staff.some((s) => s.user_id === uid() && s.role === 'admin');
+const canManage = (branch: string) =>
+  !!uid() && state.staff.some((s) => s.user_id === uid() && (s.role === 'admin' || (s.role === 'manager' && s.branch_id === branch)));
 
 function addStamps(userId: string, n: number): number {
   const p = profileOf(userId);
@@ -421,6 +442,75 @@ const rpcs: Record<string, (p: Row) => unknown> = {
     save();
     return { first_name: prof.first_name, stamps: prof.stamps, rewards_earned: earned };
   },
+  // ---- branch team (same rules as supabase/migrations/…_branch_team.sql)
+  can_manage_branch(p) { return canManage(String(p.p_branch)); },
+  branch_team(p) {
+    const branch = String(p.p_branch);
+    if (!canManage(branch)) throw new DemoError('not_allowed');
+    const roleOrder = (r: string) => (r === 'manager' ? 0 : 1);
+    return {
+      members: state.staff.filter((x) => x.branch_id === branch)
+        .map((x) => {
+          const u = state.users.find((y) => y.id === x.user_id);
+          const pr = profileOf(x.user_id);
+          return { user_id: x.user_id, email: u?.email ?? '', first_name: pr?.first_name ?? null, last_name: pr?.last_name ?? null,
+            role: x.role, since: x.created_at ?? nowIso(), is_me: x.user_id === uid() };
+        })
+        .sort((a, b) => roleOrder(a.role) - roleOrder(b.role) || String(a.first_name).localeCompare(String(b.first_name), 'tr')),
+      invites: (state.invites ?? []).filter((i) => i.branch_id === branch)
+        .map((i) => ({ email: i.email, role: i.role, since: i.created_at })),
+    };
+  },
+  branch_add_staff(p) {
+    const branch = String(p.p_branch);
+    const role = (p.p_role ?? 'barista') as 'barista' | 'manager';
+    const email = String(p.p_email ?? '').trim().toLowerCase();
+    if (!canManage(branch)) throw new DemoError('not_allowed');
+    if (role !== 'barista' && role !== 'manager') throw new DemoError('invalid_role');
+    if (role === 'manager' && !isAdmin()) throw new DemoError('not_allowed');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new DemoError('invalid_email');
+    const u = state.users.find((x) => x.email === email && x.confirmed);
+    if (!u) {
+      state.invites = (state.invites ?? []).filter((i) => !(i.email === email && i.branch_id === branch));
+      state.invites.unshift({ email, branch_id: branch, role, created_at: nowIso() });
+      save();
+      return { status: 'invited' };
+    }
+    const current = state.staff.find((x) => x.user_id === u.id && x.branch_id === branch);
+    if (current) {
+      if (current.role === role) throw new DemoError('already_staff');
+      if (!isAdmin()) throw new DemoError('not_allowed');
+      current.role = role;
+      save();
+      return { status: 'updated' };
+    }
+    if (state.staff.some((x) => x.user_id === u.id && x.role === 'admin')) throw new DemoError('already_staff');
+    state.staff.push({ user_id: u.id, branch_id: branch, role, created_at: nowIso() });
+    save();
+    return { status: 'added' };
+  },
+  branch_remove_staff(p) {
+    const branch = String(p.p_branch);
+    if (!canManage(branch)) throw new DemoError('not_allowed');
+    if (p.p_user === uid()) throw new DemoError('cannot_remove_self');
+    const row = state.staff.find((x) => x.user_id === p.p_user && x.branch_id === branch);
+    if (!row) throw new DemoError('not_found');
+    if (row.role !== 'barista' && !isAdmin()) throw new DemoError('not_allowed');
+    state.staff = state.staff.filter((x) => x !== row);
+    save();
+    return null;
+  },
+  branch_cancel_invite(p) {
+    const branch = String(p.p_branch);
+    const email = String(p.p_email ?? '').trim().toLowerCase();
+    if (!canManage(branch)) throw new DemoError('not_allowed');
+    const inv = (state.invites ?? []).find((i) => i.email === email && i.branch_id === branch);
+    if (!inv) throw new DemoError('not_found');
+    if (inv.role !== 'barista' && !isAdmin()) throw new DemoError('not_allowed');
+    state.invites = (state.invites ?? []).filter((i) => i !== inv);
+    save();
+    return null;
+  },
 };
 
 // ---------------------------------------------------------------- edge functions
@@ -501,6 +591,16 @@ function setSession(userId: string | null, event: AuthEvent) {
 const authError = (code: string, message: string) => ({ code, message, status: 400, name: 'AuthApiError' });
 const findUser = (email: string) => state.users.find((u) => u.email === String(email).trim().toLowerCase());
 
+/** Invites for this email become staff memberships once the address is confirmed. */
+function claimInvites(u: User) {
+  for (const i of (state.invites ?? []).filter((x) => x.email === u.email)) {
+    if (!state.staff.some((x) => x.user_id === u.id && x.branch_id === i.branch_id)) {
+      state.staff.push({ user_id: u.id, branch_id: i.branch_id, role: i.role, created_at: nowIso() });
+    }
+  }
+  state.invites = (state.invites ?? []).filter((x) => x.email !== u.email);
+}
+
 function createProfile(u: User) {
   if (profileOf(u.id)) return;
   const m = u.meta;
@@ -538,7 +638,7 @@ const auth = {
     await ready;
     const u = findUser(email);
     if (!u || token !== DEMO_CODE) return { data: { user: null, session: null }, error: authError('otp_expired', 'Token has expired or is invalid') };
-    if (type === 'signup') { u.confirmed = true; createProfile(u); }
+    if (type === 'signup') { u.confirmed = true; createProfile(u); claimInvites(u); }
     setSession(u.id, type === 'recovery' ? 'PASSWORD_RECOVERY' : 'SIGNED_IN');
     return { data: { user: sessionOf(u.id)!.user, session: sessionOf(u.id) }, error: null };
   },

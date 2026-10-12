@@ -39,4 +39,11 @@ export type Order = {
   order_items?: OrderItem[];
   branch?: Pick<Branch, 'name' | 'district' | 'city' | 'prep_minutes'>;
 };
-export type StaffMembership = { branch_id: string | null; role: 'barista' | 'manager' | 'admin' };
+export type StaffRole = 'barista' | 'manager' | 'admin';
+export type StaffMembership = { branch_id: string | null; role: StaffRole };
+export type TeamMember = {
+  user_id: string; email: string; first_name: string | null; last_name: string | null;
+  role: StaffRole; since: string; is_me: boolean;
+};
+export type TeamInvite = { email: string; role: StaffRole; since: string };
+export type BranchTeam = { members: TeamMember[]; invites: TeamInvite[] };
