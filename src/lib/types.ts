@@ -15,7 +15,7 @@ export type Product = {
   is_coffee: boolean; has_milk_options: boolean; image_path: string | null; badge: 'fresh' | null; sort: number;
   is_active?: boolean;
 };
-export type Milk = { id: string; label: string; extra_price: number; is_plant: boolean; is_default: boolean; sort: number };
+export type Milk = { id: string; label: string; extra_price: number; is_plant: boolean; is_default: boolean; sort: number; is_active?: boolean };
 export type Campaign = {
   id: string; tone: 'primary' | 'eco' | 'copper' | 'surface'; eyebrow: string | null; title: string; body: string | null; sort: number;
   is_active?: boolean; starts_at?: string | null; ends_at?: string | null;
@@ -82,3 +82,32 @@ export type ExportRow = {
   handled_by: string | null;
 };
 export type PushCampaign = { id: number; title: string; body: string; branch_id: string | null; recipients: number; created_at: string };
+
+// ---------------------------------------------------------------- company panel (admins)
+export type LiveBranch = {
+  branch_id: string; waiting: number; scheduled: number; preparing: number; ready: number; oldest_waiting_at: string | null;
+  today_orders: number; today_revenue: number; today_cancelled: number; sold_out: number; staff: number;
+};
+export type LiveOverview = { generated_at: string; branches: LiveBranch[] };
+export type CompanyStaffMember = {
+  user_id: string; branch_id: string | null; role: StaffRole; email: string; first_name: string | null; last_name: string | null;
+  since: string; last_sign_in_at: string | null; is_me: boolean;
+};
+export type CompanyStaff = { members: CompanyStaffMember[]; invites: { email: string; branch_id: string; role: StaffRole; since: string }[] };
+export type CustomerRow = {
+  id: string; first_name: string; last_name: string; email: string; phone: string | null; stamps: number; created_at: string;
+  rewards: number; orders: number; spent: number; last_order_at: string | null; is_staff: boolean;
+};
+export type CustomerSearch = { total: number; new_7d: number; opted_in: number; results: CustomerRow[] };
+export type CustomerDetail = {
+  id: string; first_name: string; last_name: string; email: string; phone: string | null; birthday: string | null; member_code: string;
+  stamps: number; marketing_opt_in: boolean; created_at: string; favorite_branch: string | null;
+  staff: { branch_id: string | null; role: StaffRole }[];
+  stats: { orders: number; spent: number; cancelled: number; first_order_at: string | null; last_order_at: string | null };
+  rewards: { code: string; reason: 'stamps' | 'birthday' | 'gift'; earned_at: string; expires_at: string }[];
+  orders: { id: string; order_no: number; branch: string; status: OrderStatus; total: number; created_at: string }[];
+};
+export type AdminOrderRow = {
+  id: string; order_no: number; branch_id: string; customer_name: string | null; email: string | null; status: OrderStatus;
+  payment_method: PaymentMethod; payment_status: PaymentStatus; total: number; created_at: string; pickup_at: string | null; items: string | null;
+};

@@ -1,12 +1,13 @@
-// Owner home: sales at a glance (all branches or one), with export, and the management areas.
+// Company panel (admins): every branch right now, the management areas, and sales with export.
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { router } from 'expo-router';
-import { Bell, Coffee, Download, Megaphone, Settings2, Store, ThumbsDown, ThumbsUp } from 'lucide-react-native';
+import { Bell, Coffee, Download, Megaphone, Milk, Receipt, Settings2, Store, ThumbsDown, ThumbsUp, UserRound, Users } from 'lucide-react-native';
 import { Txt } from '@/components/Txt';
 import { Button } from '@/components/Button';
 import { Screen, TopBar } from '@/components/Layout';
 import { adminStyles, Bar, Chips, NavRow, Stat } from '@/components/Admin';
+import { LiveBranches } from '@/components/LiveBranches';
 import { exportOrders, useAdminReport, useCatalogue } from '@/lib/api';
 import { ordersCsv, shareTextFile } from '@/lib/csv';
 import { errorMessage } from '@/lib/errors';
@@ -67,9 +68,29 @@ export default function AdminHome() {
     <Screen>
       <TopBar back />
       <Txt variant="overline" color="secondaryInk" style={{ marginTop: space[5] }}>İşletme yönetimi</Txt>
-      <Txt variant="h1" accessibilityRole="header" style={{ marginTop: 4 }}>Satışlar</Txt>
+      <Txt variant="h1" accessibilityRole="header" style={{ marginTop: 4 }}>Şirket paneli</Txt>
 
-      <View style={{ gap: space[2], marginTop: space[4] }}>
+      <Txt variant="h4" accessibilityRole="header" style={{ marginTop: space[6] }}>Şu an</Txt>
+      <LiveBranches part="summary" />
+
+      <Txt variant="h4" accessibilityRole="header" style={{ marginTop: space[8] }}>Yönet</Txt>
+      <View style={{ gap: space[2], marginTop: space[3] }}>
+        <NavRow icon={Receipt} title="Siparişler" body="Tüm şubelerde sipariş ara, durumunu değiştir, iptal et" onPress={() => router.push('/admin/orders')} />
+        <NavRow icon={UserRound} title="Müşteriler" body="Müşteri ara, kahve kartı, hediye kahve, damga düzeltme" onPress={() => router.push('/admin/customers')} />
+        <NavRow icon={Users} title="Ekip" body="Tüm şubelerin müdür ve baristaları, Excel listesi" onPress={() => router.push('/admin/team')} />
+        <NavRow icon={Coffee} title="Menü ve fiyatlar" body="Ürün ekle, fiyat ve fotoğraf değiştir, menüden kaldır" onPress={() => router.push('/admin/menu')} />
+        <NavRow icon={Milk} title="Süt seçenekleri ve kategoriler" body="Süt fiyat farkları, kategorileri gizle/göster" onPress={() => router.push('/admin/options')} />
+        <NavRow icon={Store} title="Şubeler ve çalışma saatleri" body="Açılış-kapanış saatleri, hazırlık süresi, sipariş alma" onPress={() => router.push('/admin/branches')} />
+        <NavRow icon={Megaphone} title="Kampanya kartları" body="Ana sayfadaki kampanyalar" onPress={() => router.push('/admin/campaigns')} />
+        <NavRow icon={Bell} title="Bildirim gönder" body="İzin veren müşterilere kampanya duyurusu" onPress={() => router.push('/admin/notify')} />
+        <NavRow icon={Settings2} title="Ayarlar" body="Sadakat kartı, indirimler, doğum günü kahvesi, “Seni özledik”" onPress={() => router.push('/admin/settings')} />
+      </View>
+
+      <Txt variant="h4" accessibilityRole="header" style={{ marginTop: space[8] }}>Şubeler şu an</Txt>
+      <LiveBranches part="list" />
+
+      <Txt variant="h4" accessibilityRole="header" style={{ marginTop: space[8] }}>Satışlar</Txt>
+      <View style={{ gap: space[2], marginTop: space[3] }}>
         <Chips options={RANGES} value={days} onChange={setDays} label="Dönem" />
         <Chips options={branchOptions} value={branchId} onChange={setBranchId} label="Şube" />
       </View>
@@ -165,14 +186,7 @@ export default function AdminHome() {
         </>
       ) : null}
 
-      <Txt variant="h5" accessibilityRole="header" style={adminStyles.h}>Yönet</Txt>
-      <View style={{ gap: space[2], marginBottom: space[8] }}>
-        <NavRow icon={Coffee} title="Menü ve fiyatlar" body="Ürün ekle, fiyat ve fotoğraf değiştir, menüden kaldır" onPress={() => router.push('/admin/menu')} />
-        <NavRow icon={Store} title="Şubeler ve çalışma saatleri" body="Açılış-kapanış saatleri, hazırlık süresi, ekip" onPress={() => router.push('/admin/branches')} />
-        <NavRow icon={Megaphone} title="Kampanya kartları" body="Ana sayfadaki kampanyalar" onPress={() => router.push('/admin/campaigns')} />
-        <NavRow icon={Bell} title="Bildirim gönder" body="İzin veren müşterilere kampanya duyurusu" onPress={() => router.push('/admin/notify')} />
-        <NavRow icon={Settings2} title="Ayarlar" body="Doğum günü kahvesi, “Seni özledik”, sadakat kartı" onPress={() => router.push('/admin/settings')} />
-      </View>
+      <View style={{ height: space[8] }} />
     </Screen>
   );
 }

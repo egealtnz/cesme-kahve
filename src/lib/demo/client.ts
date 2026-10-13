@@ -47,7 +47,7 @@ type State = {
   ratings?: { order_id: string; user_id: string | null; liked: boolean; comment: string | null; created_at: string }[];
   favorites?: { id: number; user_id: string; product_id: string; milk_id: string | null; created_at: string }[];
   pushCampaigns?: { id: number; title: string; body: string; branch_id: string | null; recipients: number; created_at: string }[];
-  edits?: { products?: Row[]; campaigns?: Row[]; branches?: Row[]; settings?: Row };
+  edits?: { products?: Row[]; campaigns?: Row[]; branches?: Row[]; settings?: Row; milks?: Row[]; categories?: Row[] };
   rewards: DemoReward[];
   orders: DemoOrder[];
   items: DemoItem[];
@@ -78,9 +78,30 @@ const normalizeCode = (raw: unknown) => String(raw ?? '').toUpperCase().replace(
 const MANAGER_ID = 'u-manager';
 const OWNER_ID = 'u-owner';
 
+/** Made-up regulars behind the sample order history (the owner's customer list shows them). */
+const GUESTS: [string, string][] = [
+  ['Ayşe', 'Kara'], ['Mehmet', 'Şahin'], ['Zeynep', 'Çelik'], ['Can', 'Yıldız'], ['Elif', 'Aksoy'], ['Burak', 'Koç'],
+  ['Deniz', 'Erdem'], ['Ece', 'Polat'], ['Mert', 'Kurt'], ['Selin', 'Özkan'], ['Kerem', 'Aslan'], ['Nil', 'Doğan'],
+  ['Ozan', 'Tekin'], ['İrem', 'Bulut'], ['Emre', 'Güneş'], ['Derya', 'Uçar'], ['Kaan', 'Ateş'], ['Melis', 'Sarı'],
+];
+const ascii = (t: string) => t.toLocaleLowerCase('tr-TR').replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u');
+function guestAccounts(): { users: User[]; profiles: (Profile & { created_at: string })[] } {
+  const users: User[] = [];
+  const profiles: (Profile & { created_at: string })[] = [];
+  GUESTS.forEach(([first, last], i) => {
+    const id = `u-guest-${i}`;
+    users.push({ id, email: `${ascii(first)}.${ascii(last)}@ornek.com`, password: '-', confirmed: true, meta: {} });
+    profiles.push({
+      id, first_name: first, last_name: last, phone: `53${String(10000000 + i * 7919).slice(0, 8)}`, birthday: null,
+      favorite_branch_id: null, marketing_opt_in: i % 3 !== 0, member_code: `G${String(i).padStart(2, '0')}DEMO${'KMNPQ'[i % 5]}XT`.slice(0, 10),
+      stamps: (i * 3) % 9, created_at: new Date(Date.now() - (120 - i * 6) * 86400_000).toISOString(),
+    });
+  });
+  return { users, profiles };
+}
+
 /** A month of finished orders across a few branches, so the owner's report has something to show. */
 function demoHistory(startNo: number) {
-  const names = ['Ayşe', 'Mehmet', 'Zeynep', 'Can', 'Elif', 'Burak', 'Deniz', 'Ece', 'Mert', 'Selin', 'Kerem', 'Nil'];
   const shops = ['alacati', 'alacati', 'korfez', 'pendik-marina', 'izmit-merkez'];
   const menu = [['latte', 'tam'], ['cappuccino', 'tam'], ['americano', null], ['latte', 'badem'], ['flat-white', 'tam'],
     ['kruvasan-tereyagli', null], ['turk-kahvesi', null], ['cortado', 'yagsiz'], ['su', null]] as [string, string | null][];
@@ -100,6 +121,7 @@ function demoHistory(startNo: number) {
     created.setDate(created.getDate() - daysBack - 1);
     created.setHours(hour, r(60), 0, 0);
     const id = `o-h${i}`;
+    const guest = r(GUESTS.length);
     const lines = Array.from({ length: 1 + r(3) }, () => menu[r(menu.length)]);
     let subtotal = 0;
     let coffees = 0;
@@ -116,7 +138,7 @@ function demoHistory(startNo: number) {
     const cancelled = r(14) === 0;
     const at = (min: number) => new Date(created.getTime() + min * 60_000).toISOString();
     orders.push({
-      id, order_no: startNo + i, user_id: `u-guest-${r(40)}`, customer_name: names[r(names.length)], branch_id: shops[r(shops.length)],
+      id, order_no: startNo + i, user_id: `u-guest-${guest}`, customer_name: GUESTS[guest][0], branch_id: shops[r(shops.length)],
       status: cancelled ? 'cancelled' : 'collected', payment_method: 'store', payment_status: cancelled ? 'unpaid' : 'paid',
       eco_packaging: true, own_cup: false, subtotal, reward_discount: 0, campaign_discount: 0, cup_discount: 0, total: subtotal,
       rewards_used: 0, stamps_earned: coffees, created_at: created.toISOString(), ready_at: cancelled ? null : at(6),
@@ -223,6 +245,9 @@ function seedWithHistory(): State {
   base.favorites = [{ id: 1, user_id: 'u-demo', product_id: 'latte', milk_id: 'badem', created_at: ago(86400 * 10) }];
   base.pushCampaigns = [];
   base.edits = {};
+  const g = guestAccounts();
+  base.users.push(...g.users);
+  base.profiles.push(...g.profiles);
   return base;
 }
 
@@ -249,6 +274,11 @@ const ready: Promise<void> = AsyncStorage.getItem(STORE_KEY)
         state.profiles.push(fresh.profiles.find((x) => x.id === OWNER_ID)!);
         state.staff.push(fresh.staff.find((x) => x.user_id === OWNER_ID)!);
       }
+      if (!state.users.some((u) => u.id === 'u-guest-0')) {   // saved before the company panel existed
+        const g = guestAccounts();
+        state.users.push(...g.users);
+        state.profiles.push(...g.profiles);
+      }
       if (!state.users.some((u) => u.id === MANAGER_ID)) {
         const fresh = seed();
         state.users.push(fresh.users.find((u) => u.id === MANAGER_ID)!);
@@ -266,15 +296,19 @@ function applyEdits() {
   put(products as unknown as Row[], e.products, PRISTINE.products as unknown as Row[]);
   put(campaignsList, e.campaigns, PRISTINE.campaigns as unknown as Row[]);
   put(branches as unknown as Row[], e.branches, PRISTINE.branches as unknown as Row[]);
+  put(milks as unknown as Row[], e.milks, PRISTINE.milk_options as unknown as Row[]);
+  put(categories as unknown as Row[], e.categories, PRISTINE.menu_categories as unknown as Row[]);
   for (const k of Object.keys(settings)) delete (settings as unknown as Row)[k];
   Object.assign(settings, clone(PRISTINE.app_settings), e.settings ?? {});
 }
-function saveEdits(kind: 'products' | 'campaigns' | 'branches' | 'settings') {
+function saveEdits(kind: 'products' | 'campaigns' | 'branches' | 'settings' | 'milks' | 'categories') {
   state.edits ??= {};
   if (kind === 'products') state.edits.products = clone(products as unknown as Row[]);
   if (kind === 'campaigns') state.edits.campaigns = clone(campaignsList);
   if (kind === 'branches') state.edits.branches = clone(branches as unknown as Row[]);
   if (kind === 'settings') state.edits.settings = clone(settings as unknown as Row);
+  if (kind === 'milks') state.edits.milks = clone(milks as unknown as Row[]);
+  if (kind === 'categories') state.edits.categories = clone(categories as unknown as Row[]);
   save();
 }
 
@@ -361,7 +395,7 @@ function tableRows(table: string): Row[] {
     case 'branches': return branches as unknown as Row[];
     case 'menu_categories': return (isAdmin() ? categories : categories.filter((c) => c.is_active)) as Row[];
     case 'products': return (isAdmin() ? products : products.filter((p) => p.is_active)) as unknown as Row[];
-    case 'milk_options': return milks.filter((m) => m.is_active) as Row[];
+    case 'milk_options': return (isAdmin() ? milks : milks.filter((m) => m.is_active)) as Row[];
     case 'campaigns': return isAdmin() ? campaignsList : campaignsList.filter((c) => c.is_active);
     case 'favorites': return (state.favorites ?? []).filter((f) => f.user_id === me) as Row[];
     case 'push_campaigns': return isAdmin() ? (state.pushCampaigns ?? []) as Row[] : [];
@@ -493,8 +527,9 @@ class Query implements PromiseLike<Result> {
         save();
         return { data: null, error: null };
       }
-      const editable: Record<string, 'products' | 'campaigns' | 'branches' | 'settings'> = {
+      const editable: Record<string, 'products' | 'campaigns' | 'branches' | 'settings' | 'milks' | 'categories'> = {
         products: 'products', campaigns: 'campaigns', branches: 'branches', app_settings: 'settings',
+        milk_options: 'milks', menu_categories: 'categories',
       };
       if (!editable[this.table] || !isAdmin()) return { data: [], error: null };
       if (this.table === 'branches' && 'opening_hours' in this.patch && this.patch.opening_hours) {
@@ -846,6 +881,155 @@ Object.assign(rpcs, {
     list.unshift({ id: Date.now(), title, body, branch_id: (p.p_branch as string) ?? null, recipients, created_at: nowIso() });
     save();
     return { campaign_id: list[0].id, recipients };
+  },
+});
+
+// ---- company panel (same rules as migration …_company_admin.sql)
+const requireAdmin = () => { if (!isAdmin()) throw new DemoError('not_allowed'); };
+const emailOf = (id: string | null) => state.users.find((u) => u.id === id)?.email ?? null;
+const createdOf = (p: Profile) => (p as Profile & { created_at?: string }).created_at ?? ago(86400 * 200);
+const OPEN: Order['status'][] = ['placed', 'preparing', 'ready'];
+const fold = (t: string) => ascii(String(t ?? ''));
+const digitsOf = (t: string) => {
+  let d = t.replace(/\D/g, '');
+  if (d.length === 12 && d.startsWith('90')) d = d.slice(2);
+  if (d.length === 11 && d.startsWith('0')) d = d.slice(1);
+  return d;
+};
+const itemsOf = (orderId: string) => state.items.filter((i) => i.order_id === orderId).map((i) => `${i.quantity}× ${i.product_name}`).join(', ') || null;
+function customerStats(id: string) {
+  const mine = state.orders.filter((o) => o.user_id === id);
+  const done = mine.filter((o) => o.status === 'collected');
+  return {
+    orders: done.length, spent: done.reduce((a, o) => a + o.total, 0), cancelled: mine.filter((o) => o.status === 'cancelled').length,
+    first_order_at: mine.map((o) => o.created_at).sort()[0] ?? null, last_order_at: mine.map((o) => o.created_at).sort().pop() ?? null,
+  };
+}
+const liveRewards = (id: string) => state.rewards.filter((w) => w.user_id === id && !w.used_at && !w.reserved_order_id && w.expires_at > nowIso());
+
+Object.assign(rpcs, {
+  admin_live_overview() {
+    requireAdmin();
+    const tr = new Date(Date.now() + 3 * 3600_000);
+    const dayStart = new Date(Date.UTC(tr.getUTCFullYear(), tr.getUTCMonth(), tr.getUTCDate()) - 3 * 3600_000).toISOString();
+    return {
+      generated_at: nowIso(),
+      branches: [...branches].sort((a, b) => a.sort - b.sort).map((b) => {
+        const open = state.orders.filter((o) => o.branch_id === b.id && OPEN.includes(o.status));
+        const due = (o: DemoOrder) => !o.pickup_at || Date.parse(o.pickup_at) <= Date.now() + (b.prep_minutes + 10) * 60_000;
+        const today = state.orders.filter((o) => o.branch_id === b.id && o.created_at >= dayStart);
+        const done = today.filter((o) => o.status === 'collected');
+        const waitingSince = open.filter((o) => (o.status === 'placed' || o.status === 'preparing') && due(o)).map((o) => o.created_at).sort()[0] ?? null;
+        return {
+          branch_id: b.id, waiting: open.filter((o) => o.status === 'placed' && due(o)).length,
+          scheduled: open.filter((o) => o.status === 'placed' && !due(o)).length,
+          preparing: open.filter((o) => o.status === 'preparing').length, ready: open.filter((o) => o.status === 'ready').length,
+          oldest_waiting_at: waitingSince, today_orders: done.length, today_revenue: done.reduce((a, o) => a + o.total, 0),
+          today_cancelled: today.filter((o) => o.status === 'cancelled').length,
+          sold_out: state.availability.filter((x) => x.branch_id === b.id && x.sold_out).length,
+          staff: state.staff.filter((x) => x.branch_id === b.id).length,
+        };
+      }),
+    };
+  },
+  admin_staff_list() {
+    requireAdmin();
+    return {
+      members: state.staff.map((m) => {
+        const pr = profileOf(m.user_id);
+        return {
+          user_id: m.user_id, branch_id: m.branch_id, role: m.role, email: emailOf(m.user_id) ?? '', first_name: pr?.first_name ?? null,
+          last_name: pr?.last_name ?? null, since: m.created_at ?? ago(86400 * 30),
+          last_sign_in_at: m.user_id === uid() ? nowIso() : ago(3600 * (5 + m.user_id.length * 3)), is_me: m.user_id === uid(),
+        };
+      }),
+      invites: (state.invites ?? []).map((i) => ({ email: i.email, branch_id: i.branch_id, role: i.role, since: i.created_at })),
+    };
+  },
+  admin_find_customers(p: Row) {
+    requireAdmin();
+    const q = String(p.p_query ?? '').trim();
+    const limit = Math.min(Math.max(Number(p.p_limit) || 30, 1), 100);
+    const d = digitsOf(q);
+    const code = q.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const match = (pr: Profile) => !q || fold(emailOf(pr.id) ?? '').includes(fold(q)) || fold(`${pr.first_name} ${pr.last_name}`).includes(fold(q))
+      || (d.length >= 4 && (pr.phone ?? '').includes(d)) || pr.member_code === code;
+    const all = state.profiles;
+    return {
+      total: all.length, new_7d: all.filter((x) => createdOf(x) > ago(7 * 86400)).length, opted_in: all.filter((x) => x.marketing_opt_in).length,
+      results: all.filter(match).sort((a, b) => createdOf(b).localeCompare(createdOf(a))).slice(0, limit).map((pr) => {
+        const st = customerStats(pr.id);
+        return {
+          id: pr.id, first_name: pr.first_name, last_name: pr.last_name, email: emailOf(pr.id) ?? '', phone: pr.phone, stamps: pr.stamps,
+          created_at: createdOf(pr), rewards: liveRewards(pr.id).length, orders: st.orders, spent: st.spent, last_order_at: st.last_order_at,
+          is_staff: state.staff.some((x) => x.user_id === pr.id),
+        };
+      }),
+    };
+  },
+  admin_customer_detail(p: Row) {
+    requireAdmin();
+    const pr = profileOf(String(p.p_user));
+    if (!pr) throw new DemoError('not_found');
+    return {
+      id: pr.id, first_name: pr.first_name, last_name: pr.last_name, email: emailOf(pr.id), phone: pr.phone, birthday: pr.birthday,
+      member_code: pr.member_code, stamps: pr.stamps, marketing_opt_in: pr.marketing_opt_in, created_at: createdOf(pr),
+      favorite_branch: branches.find((b) => b.id === pr.favorite_branch_id)?.name ?? null,
+      staff: state.staff.filter((x) => x.user_id === pr.id).map((x) => ({ branch_id: x.branch_id, role: x.role })),
+      stats: customerStats(pr.id),
+      rewards: liveRewards(pr.id).sort((a, b) => a.expires_at.localeCompare(b.expires_at))
+        .map((w) => ({ code: w.code, reason: w.reason ?? 'stamps', earned_at: w.earned_at, expires_at: w.expires_at })),
+      orders: state.orders.filter((o) => o.user_id === pr.id).sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 20)
+        .map((o) => ({ id: o.id, order_no: o.order_no, branch: branches.find((b) => b.id === o.branch_id)?.name ?? o.branch_id, status: o.status, total: o.total, created_at: o.created_at })),
+    };
+  },
+  admin_gift_reward(p: Row) {
+    requireAdmin();
+    const days = Number(p.p_days ?? 30);
+    if (!Number.isInteger(days) || days < 1 || days > 365) throw new DemoError('invalid_quantity');
+    if (String(p.p_message ?? '').trim().length > 160) throw new DemoError('invalid_message');
+    if (!profileOf(String(p.p_user))) throw new DemoError('not_found');
+    const w: DemoReward = { id: uuid(), user_id: String(p.p_user), code: newCode(6), earned_at: nowIso(), expires_at: inDays(days),
+      reserved_order_id: null, used_at: null, used_branch_id: null, source_order_id: null, reason: 'gift' };
+    state.rewards.push(w);
+    save();
+    return { code: w.code, expires_at: w.expires_at };
+  },
+  admin_adjust_stamps(p: Row) {
+    requireAdmin();
+    const delta = Number(p.p_delta);
+    if (!Number.isInteger(delta) || delta === 0 || delta < -50 || delta > 50) throw new DemoError('invalid_quantity');
+    const pr = profileOf(String(p.p_user));
+    if (!pr) throw new DemoError('not_found');
+    let earned = 0;
+    if (delta > 0) earned = addStamps(pr.id, delta);
+    else {
+      if (pr.stamps + delta < 0) throw new DemoError('invalid_quantity');
+      pr.stamps += delta;
+    }
+    save();
+    return { stamps: pr.stamps, rewards_earned: earned };
+  },
+  admin_find_orders(p: Row) {
+    requireAdmin();
+    const q = String(p.p_query ?? '').trim();
+    const status = (p.p_status as string | null) ?? null;
+    const no = /^#?\d{1,9}$/.test(q) ? Number(q.replace('#', '')) : null;
+    const d = digitsOf(q);
+    const limit = Math.min(Math.max(Number(p.p_limit) || 50, 1), 200);
+    return state.orders
+      .filter((o) => o.status !== 'awaiting_payment' && (!p.p_branch || o.branch_id === p.p_branch)
+        && (!status || (status === 'open' ? OPEN.includes(o.status) : o.status === status)))
+      .filter((o) => {
+        if (!q) return true;
+        const pr = o.user_id ? profileOf(o.user_id) : undefined;
+        return o.order_no === no || fold(o.customer_name ?? '').includes(fold(q)) || fold(emailOf(o.user_id) ?? '').includes(fold(q))
+          || (!!pr && fold(`${pr.first_name} ${pr.last_name}`).includes(fold(q))) || (d.length >= 7 && !!pr?.phone?.includes(d.slice(-10)));
+      })
+      .sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, limit)
+      .map((o) => ({ id: o.id, order_no: o.order_no, branch_id: o.branch_id, customer_name: o.customer_name, email: emailOf(o.user_id),
+        status: o.status, payment_method: o.payment_method, payment_status: o.payment_status, total: o.total, created_at: o.created_at,
+        pickup_at: o.pickup_at ?? null, items: itemsOf(o.id) }));
   },
 });
 

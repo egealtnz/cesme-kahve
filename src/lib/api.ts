@@ -4,6 +4,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { callFunction, IS_DEMO, supabase } from './supabase';
 import type {
+  AdminOrderRow, CompanyStaff, CustomerDetail, CustomerSearch, LiveOverview,
   ExportRow, Favorite, OrderRating, PushCampaign, Report,
   Branch, BranchTeam, Campaign, Category, Milk, Order, OrderStatus, PaymentMethod, Product, Profile, Reward, Settings, StaffMembership,
 } from './types';
@@ -463,4 +464,79 @@ export async function sendPushCampaign(title: string, body: string, branchId: st
   const { data, error } = await supabase.rpc('admin_send_push', { p_title: title, p_body: body, p_branch: branchId });
   if (error) throw new Error(error.message);
   return data as { campaign_id: number; recipients: number };
+}
+
+// ---------------------------------------------------------------- company panel (admins)
+async function call<T>(name: string, args: Record<string, unknown> = {}): Promise<T> {
+  const { data, error } = await supabase.rpc(name, args);
+  if (error) throw new Error(error.message);
+  return data as T;
+}
+
+export function useLiveOverview() {
+  return useQuery({
+    queryKey: ['admin-live'],
+    refetchInterval: IS_DEMO ? 5_000 : 30_000,
+    queryFn: () => call<LiveOverview>('admin_live_overview'),
+  });
+}
+
+export function useCompanyStaff() {
+  return useQuery({ queryKey: ['admin-staff'], queryFn: () => call<CompanyStaff>('admin_staff_list') });
+}
+
+export function useCustomerSearch(query: string) {
+  return useQuery({
+    queryKey: ['admin-customers', query],
+    placeholderData: (prev) => prev,
+    queryFn: () => call<CustomerSearch>('admin_find_customers', { p_query: query || null, p_limit: 40 }),
+  });
+}
+
+export function useCustomerDetail(userId: string | undefined) {
+  return useQuery({
+    queryKey: ['admin-customer', userId],
+    enabled: !!userId,
+    queryFn: () => call<CustomerDetail>('admin_customer_detail', { p_user: userId }),
+  });
+}
+
+export const giftReward = (userId: string, days: number, message: string | null) =>
+  call<{ code: string; expires_at: string }>('admin_gift_reward', { p_user: userId, p_days: days, p_message: message });
+
+export const adjustStamps = (userId: string, delta: number) =>
+  call<{ stamps: number; rewards_earned: number }>('admin_adjust_stamps', { p_user: userId, p_delta: delta });
+
+export function useOrderSearch(query: string, branchId: string | null, status: 'open' | 'collected' | 'cancelled' | null) {
+  return useQuery({
+    queryKey: ['admin-orders', query, branchId, status],
+    placeholderData: (prev) => prev,
+    refetchInterval: status === 'open' ? 30_000 : false,
+    queryFn: () => call<AdminOrderRow[]>('admin_find_orders', { p_query: query || null, p_branch: branchId, p_status: status, p_limit: 60 }),
+  });
+}
+
+/** Any order, with items, staff actions and rating (admins can read every branch). */
+export function useAnyOrder(orderId: string | undefined) {
+  return useQuery({
+    queryKey: ['admin-order', orderId],
+    enabled: !!orderId,
+    queryFn: async () => (await must(supabase.from('orders').select(STAFF_ORDER_SELECT).eq('id', orderId!).single())) as Order,
+  });
+}
+
+export function useAllMilks(enabled: boolean) {
+  return useQuery({
+    queryKey: ['admin-milks'],
+    enabled,
+    queryFn: async () => (await must(supabase.from('milk_options').select('*').order('sort'))) as Milk[],
+  });
+}
+
+export async function saveMilk(id: string, patch: Partial<Milk>) {
+  return write(supabase.from('milk_options').update(patch).eq('id', id).select());
+}
+
+export async function saveCategory(id: string, patch: Partial<Category>) {
+  return write(supabase.from('menu_categories').update(patch).eq('id', id).select());
 }

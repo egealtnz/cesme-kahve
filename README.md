@@ -79,7 +79,7 @@ Yerelde gönderilen doğrulama e-postaları `http://127.0.0.1:54324` (Inbucket) 
 ```bash
 npm run typecheck        # TypeScript
 npm run lint             # ESLint (expo lint)
-npm run test:backend     # 28 uçtan uca test: RLS, fiyat, damga/hediye, personel ve ekip yetkileri, ödeme, iade, şube bildirimi, yönetici araçları, çalışma saatleri, ileri saat, favori, değerlendirme, rapor, doğum günü, bildirim, hesap silme
+npm run test:backend     # 29 uçtan uca test: RLS, fiyat, damga/hediye, personel ve ekip yetkileri, ödeme, iade, şube bildirimi, yönetici araçları, çalışma saatleri, ileri saat, favori, değerlendirme, rapor, doğum günü, bildirim, şirket paneli, hesap silme
 ```
 
 `test:backend` yalnızca **yerel veya staging** projede çalıştırılmalı; test kullanıcıları oluşturup siler:
@@ -112,18 +112,24 @@ Tek dosyalık önizleme internetsiz çalışır; çift tıklayıp tarayıcıda a
 
 ## İşletme yönetimi (uygulama içinde)
 
-Yönetici (`admin`) hesabıyla **Profil → İşletme yönetimi** (ya da Şube ekranındaki bağlantı) şunları açar:
+Yönetici (`admin`, şirketin sahibi/genel müdürü) hesabıyla **Profil → İşletme yönetimi** (ya da Şube ekranındaki bağlantı) **Şirket paneli**ni açar:
 
 | Ekran | Ne yapılır |
 |---|---|
+| **Şu an** | Tüm şubeler canlı: bugünkü ciro, teslim edilen ve açık sipariş, sipariş alan şube sayısı; 15 dakikadan uzun bekleyen sipariş, durdurulmuş şube ve tükenen ürün uyarıları. Şubeler en yoğundan başlayarak listelenir (her 30 saniyede yenilenir). |
+| **Şube (canlı)** | Bir şubeye dokununca: yoğunluk / 30 dk durdur, açık siparişler, tezgah ekranı, tükenenler, ekip ve şube ayarlarına kısayol. |
+| **Siparişler** | Tüm şubelerde sipariş no, müşteri adı, e-posta ya da telefonla arama; durum ve şube süzgeci. Sipariş ayrıntısında ürünler, kimin hazırladığı, müşteri yorumu; tezgahtaki gibi ilerletme ve iptal. |
+| **Müşteriler** | Üye sayısı, son 7 günde katılan, kampanya izni; ad / e-posta / telefon / üye koduyla arama. Müşteri sayfasında harcama, kahve kartı, hediye kahveler, son siparişler; **hediye kahve gönder** (bildirimle) ve **damga düzelt**. |
+| **Ekip** | Tüm şubelerin müdür ve baristaları şube şube, son giriş tarihi, bekleyen davetler, müdürü olmayan şube uyarısı; **Excel'e aktar (CSV)**. Ekleme/çıkarma şubenin “Yönet” bağlantısından. |
 | **Satışlar** | Bugün / 7 / 30 / 90 gün, tüm şubeler ya da tek şube: ciro, sipariş, ortalama sepet, kahve sayısı, müşteri, memnuniyet; şube sıralaması, en çok satanlar, yoğun saatler, müşteri yorumları. **Excel'e aktar (CSV)** muhasebe için sipariş listesini paylaşır/indirir. |
 | **Menü ve fiyatlar** | Ürün ekle, fiyat/ad/açıklama/kategori değiştir, fotoğraf yükle (telefonun galerisinden), menüde göster/gizle. |
+| **Süt seçenekleri ve kategoriler** | Süt fiyat farkları, süt seçeneğini ve kategorileri göster/gizle. |
 | **Şubeler ve çalışma saatleri** | Açık / yakında / kapalı, uygulamadan sipariş alma, hazırlık süresi, haftanın her günü için açılış-kapanış (gece yarısını geçebilir), ekip. |
 | **Kampanya kartları** | Ana sayfadaki kartları ekle, düzenle, gizle, sil (renk önizlemeli). |
 | **Bildirim gönder** | Kampanya iletisine izin veren ve bildirimleri açık müşterilere (hepsine ya da bir şubenin müdavimlerine) duyuru. İki gönderim arasında en az 10 dakika. |
 | **Ayarlar** | Kaç kahvede bir hediye, ikinci kahve indirimi (%20/30/50), kendi bardağın indirimi, doğum günü kahvesi, “Seni özledik” bildirimi. |
 
-Değişiklikler müşterilere birkaç dakika içinde yansır. Supabase Dashboard → Table Editor hâlâ kullanılabilir (aynı tablolar: `products`, `branches`, `campaigns`, `app_settings`); fiyatlar **kuruş** cinsindendir (₺135 = `13500`). Kartla ödeme anahtarı (`app_settings.card_payments_enabled`) bilerek uygulamada yok: iyzico anahtarları girilmeden açılmamalı.
+Şirket panelinin tüm verileri yalnızca yöneticiye açık veritabanı fonksiyonlarından gelir (`supabase/migrations/…_company_admin.sql`); müdür ve baristalar bu ekranları açamaz. Değişiklikler müşterilere birkaç dakika içinde yansır. Supabase Dashboard → Table Editor hâlâ kullanılabilir (aynı tablolar: `products`, `branches`, `campaigns`, `app_settings`); fiyatlar **kuruş** cinsindendir (₺135 = `13500`). Kartla ödeme anahtarı (`app_settings.card_payments_enabled`) bilerek uygulamada yok: iyzico anahtarları girilmeden açılmamalı.
 
 ### Şube ekranındaki yeni araçlar
 

@@ -53,7 +53,7 @@ Mağazada satıcı adı olarak şirket unvanı görünür; kişisel hesap açmay
 ```bash
 supabase login
 supabase link --project-ref <proje-ref>        # Dashboard → Project Settings → General
-supabase db push                                # 13 migration: şema, iş kuralları, güvenlik, iade, kart anahtarı, şube bildirimi, ekip, sipariş kayıtları, yönetici araçları, çalışma saatleri, bildirim kutusu, favori/değerlendirme, rapor
+supabase db push                                # 14 migration: şema, iş kuralları, güvenlik, iade, kart anahtarı, şube bildirimi, ekip, sipariş kayıtları, yönetici araçları, çalışma saatleri, bildirim kutusu, favori/değerlendirme, rapor, şirket paneli
 ```
 
 Ardından SQL Editor'da, yeni siparişlerin baristalara bildirim olarak gitmesi için:

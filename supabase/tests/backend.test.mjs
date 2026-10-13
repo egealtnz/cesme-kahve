@@ -655,6 +655,91 @@ await test('favourites, ratings, reports, birthday coffee and owner offers', asy
   }
 });
 
+await test('company panel: live branches, all staff, customers, gifts, stamp fixes, order search, milk prices', async () => {
+  const boss = await newCustomer('Patron3');
+  const c = await newCustomer('Nehir');
+  sessions.set(boss.id, (await boss.client.auth.getSession()).data.session.access_token);
+  try {
+    await admin.from('staff_members').insert({ user_id: boss.id, branch_id: null, role: 'admin' });
+    await admin.from('profiles').update({ phone: '5559876543' }).eq('id', c.id);
+
+    // everything is owner-only
+    for (const [name, args] of [['admin_live_overview', {}], ['admin_staff_list', {}], ['admin_find_customers', {}],
+      ['admin_customer_detail', { p_user: c.id }], ['admin_gift_reward', { p_user: c.id }],
+      ['admin_adjust_stamps', { p_user: c.id, p_delta: 1 }], ['admin_find_orders', {}]]) {
+      assert.match(await rpcError(staff.client, name, args), /not_allowed/, `${name}: barista`);
+      assert.match(await rpcError(c.client, name, args), /not_allowed/, `${name}: customer`);
+    }
+
+    // live view: a waiting order shows up at its branch
+    const o = await rpc(c.client, 'place_order_v2', { p_branch_id: 'pendik-marina', p_payment_method: 'store',
+      p_items: [{ product_id: 'su', quantity: 1 }] });
+    const live = await rpc(boss.client, 'admin_live_overview', {});
+    const pm = live.branches.find((x) => x.branch_id === 'pendik-marina');
+    assert.ok(pm.waiting >= 1 && pm.oldest_waiting_at, JSON.stringify(pm));
+    assert.ok(pm.staff >= 1);
+    assert.equal(live.branches.length, (await anon.from('branches').select('id')).data.length);
+
+    // staff of every branch, with e-mail addresses
+    const team = await rpc(boss.client, 'admin_staff_list', {});
+    assert.ok(team.members.some((m) => m.user_id === staff.id && m.branch_id === 'pendik-marina' && m.email === staff.email));
+    assert.ok(team.members.some((m) => m.user_id === boss.id && m.branch_id === null && m.role === 'admin' && m.is_me));
+
+    // customers: by e-mail, name, phone (any format) or member code
+    const byEmail = await rpc(boss.client, 'admin_find_customers', { p_query: c.email.toUpperCase() });
+    assert.equal(byEmail.results.length, 1); assert.equal(byEmail.results[0].id, c.id);
+    assert.ok(byEmail.total >= 2);
+    assert.ok((await rpc(boss.client, 'admin_find_customers', { p_query: 'nehir test' })).results.some((x) => x.id === c.id));
+    assert.ok((await rpc(boss.client, 'admin_find_customers', { p_query: '0555 987 65 43' })).results.some((x) => x.id === c.id));
+    const code = (await profile(c)).member_code;
+    assert.ok((await rpc(boss.client, 'admin_find_customers', { p_query: code.toLowerCase() })).results.some((x) => x.id === c.id));
+    assert.equal((await rpc(boss.client, 'admin_find_customers', { p_query: '%' })).results.length, 0, 'wildcards are literal');
+
+    // a free coffee from the owner, with a notification
+    const gift = await rpc(boss.client, 'admin_gift_reward', { p_user: c.id, p_days: 14 });
+    assert.match(gift.code, /^[A-HJ-NP-Z2-9]{6}$/);
+    const { data: mine } = await c.client.from('rewards').select('reason').eq('code', gift.code);
+    assert.equal(mine[0].reason, 'gift');
+    const { data: note } = await admin.from('push_outbox').select('title, channel').eq('user_id', c.id).eq('kind', 'gift');
+    assert.equal(note.length, 1); assert.equal(note[0].channel, 'rewards');
+    assert.match(await rpcError(boss.client, 'admin_gift_reward', { p_user: c.id, p_days: 0 }), /invalid_quantity/);
+
+    // stamp fixes: completing a card turns into a free coffee; cannot go below zero
+    const per = (await anon.from('app_settings').select('stamps_per_reward').single()).data.stamps_per_reward;
+    const before = (await profile(c)).stamps;
+    const adj = await rpc(boss.client, 'admin_adjust_stamps', { p_user: c.id, p_delta: per });
+    assert.equal(adj.rewards_earned, 1); assert.equal(adj.stamps, before);
+    assert.match(await rpcError(boss.client, 'admin_adjust_stamps', { p_user: c.id, p_delta: -(before + 1) }), /invalid_quantity/);
+    if (before > 0) assert.equal((await rpc(boss.client, 'admin_adjust_stamps', { p_user: c.id, p_delta: -1 })).stamps, before - 1);
+
+    const detail = await rpc(boss.client, 'admin_customer_detail', { p_user: c.id });
+    assert.equal(detail.email, c.email);
+    assert.ok(detail.rewards.length >= 2);
+    assert.ok(detail.orders.some((x) => x.order_no === o.order_no && x.branch === 'Pendik Marina'));
+
+    // orders across branches: by number, by name, open ones only
+    const byNo = await rpc(boss.client, 'admin_find_orders', { p_query: `#${o.order_no}` });
+    assert.equal(byNo.length, 1); assert.equal(byNo[0].items, '1× Su'); assert.equal(byNo[0].email, c.email);
+    assert.ok((await rpc(boss.client, 'admin_find_orders', { p_query: 'nehir', p_status: 'open' })).some((x) => x.id === o.id));
+    assert.equal((await rpc(boss.client, 'admin_find_orders', { p_query: 'nehir', p_status: 'cancelled' })).length, 0);
+    assert.equal((await rpc(boss.client, 'admin_find_orders', { p_branch: 'alacati', p_query: String(o.order_no) })).length, 0);
+    // the owner can act on any branch's orders
+    const res = await fn(boss, 'staff-order-status', { order_id: o.id, status: 'cancelled' });
+    assert.equal(res.status, 200, await res.clone().text());
+
+    // milk prices: owner only
+    const { data: m0 } = await admin.from('milk_options').select('id, extra_price').eq('id', 'badem').single();
+    const { data: denied } = await staff.client.from('milk_options').update({ extra_price: 1 }).eq('id', 'badem').select();
+    assert.equal(denied.length, 0);
+    const { data: ok, error: me } = await boss.client.from('milk_options').update({ extra_price: m0.extra_price + 500 }).eq('id', 'badem').select();
+    assert.ifError(me); assert.equal(ok[0].extra_price, m0.extra_price + 500);
+    await admin.from('milk_options').update({ extra_price: m0.extra_price }).eq('id', 'badem');
+  } finally {
+    await admin.from('push_outbox').delete().eq('user_id', c.id);
+    for (const id of [boss.id, c.id]) await admin.auth.admin.deleteUser(id);
+  }
+});
+
 await test('deleting an account removes the person and keeps anonymous order records', async () => {
   const o = await rpc(b.client, 'place_order', { p_branch_id: 'pendik-marina', p_payment_method: 'store',
     p_items: [{ product_id: 'su', quantity: 1 }] });

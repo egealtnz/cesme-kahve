@@ -1,7 +1,7 @@
 // Order export for the accountant: a CSV file Excel opens directly (UTF-8 with BOM, ";" separators as Turkish
 // Excel expects, decimal commas). On phones it opens the share sheet (Mail, Drive, WhatsApp…); on the web it downloads.
 import { Platform } from 'react-native';
-import type { ExportRow } from './types';
+import type { Branch, CompanyStaff, ExportRow } from './types';
 
 const STATUS: Record<string, string> = { collected: 'Teslim edildi', cancelled: 'İptal' };
 const PAYMENT: Record<string, string> = { card: 'Kart', store: 'Kasada' };
@@ -27,6 +27,25 @@ export function ordersCsv(rows: ExportRow[]): string {
     r.liked === null ? '' : r.liked ? 'Beğendi' : 'Beğenmedi', r.comment ?? '', r.handled_by ?? '',
   ].map(cell).join(';'));
   return '﻿' + [head.map(cell).join(';'), ...lines].join('\r\n');
+}
+
+const ROLE: Record<string, string> = { admin: 'Yönetici (tüm şubeler)', manager: 'Şube müdürü', barista: 'Barista' };
+
+/** Staff list for the owner, branch by branch (managers first). Passwords are never stored readable, so none are listed. */
+export function staffCsv(staff: CompanyStaff, branches: Pick<Branch, 'id' | 'name' | 'sort'>[]): string {
+  const head = ['Şube', 'Görev', 'Ad Soyad', 'E-posta', 'Durum', 'Ekibe katılma', 'Son giriş', 'Giriş'];
+  const signIn = 'E-posta + kendi belirlediği şifre (Şifremi unuttum ile yenilenir)';
+  const nameOf = (id: string | null) => (id ? branches.find((b) => b.id === id)?.name ?? id : 'Tüm şubeler');
+  const order = (id: string | null) => (id ? branches.find((b) => b.id === id)?.sort ?? 999 : -1);
+  const rank = (r: string) => (r === 'admin' ? 0 : r === 'manager' ? 1 : 2);
+  const rows = [
+    ...staff.members.map((m) => ({ b: m.branch_id, r: m.role, cells: [nameOf(m.branch_id), ROLE[m.role],
+      [m.first_name, m.last_name === '-' ? null : m.last_name].filter(Boolean).join(' '), m.email, 'Aktif',
+      trDateTime(m.since), trDateTime(m.last_sign_in_at), signIn] })),
+    ...staff.invites.map((i) => ({ b: i.branch_id, r: i.role, cells: [nameOf(i.branch_id), ROLE[i.role], '', i.email,
+      'Davet bekliyor (üye olup e-postasını doğrulayınca katılır)', trDateTime(i.since), '', signIn] })),
+  ].sort((x, y) => order(x.b) - order(y.b) || rank(x.r) - rank(y.r));
+  return '\uFEFF' + [head.map(cell).join(';'), ...rows.map((x) => x.cells.map(cell).join(';'))].join('\r\n');
 }
 
 /** Saves the text as a file and hands it to the share sheet (phone) or downloads it (web). */
