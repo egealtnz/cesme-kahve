@@ -514,6 +514,147 @@ await test('the branch sees which staff member accepted, prepared and handed ove
   }
 });
 
+await test('owner tools: admin edits the catalogue; busy mode, pausing, opening hours and orders for later', async () => {
+  const boss = await newCustomer('Sahip');
+  const c = await newCustomer('Pelin');
+  try {
+    await admin.from('staff_members').insert({ user_id: boss.id, branch_id: null, role: 'admin' });
+    assert.equal(await rpc(boss.client, 'is_admin', {}), true);
+    assert.equal(await rpc(staff.client, 'is_admin', {}), false);
+
+    // catalogue writes: admins only (others are silently limited by row level security)
+    const { data: before } = await admin.from('products').select('price').eq('id', 'su').single();
+    const { data: denied } = await staff.client.from('products').update({ price: 1 }).eq('id', 'su').select();
+    assert.equal(denied?.length ?? 0, 0, 'baristas cannot change prices');
+    const { data: changed, error: e1 } = await boss.client.from('products').update({ price: before.price + 500 }).eq('id', 'su').select('price');
+    assert.ifError(e1); assert.equal(changed[0].price, before.price + 500);
+    await boss.client.from('products').update({ price: before.price }).eq('id', 'su');
+    const { error: e2 } = await boss.client.from('campaigns').insert({ id: `test-${stamp}`, title: 'Deneme', is_active: false });
+    assert.ifError(e2);
+    const { data: hidden } = await anon.from('campaigns').select('id').eq('id', `test-${stamp}`);
+    assert.equal(hidden.length, 0, 'inactive campaigns stay hidden from customers');
+    const { data: seenByBoss } = await boss.client.from('campaigns').select('id').eq('id', `test-${stamp}`);
+    assert.equal(seenByBoss.length, 1, 'admins see inactive ones');
+    await boss.client.from('campaigns').delete().eq('id', `test-${stamp}`);
+    const { error: e3 } = await c.client.from('campaigns').insert({ id: `x-${stamp}`, title: 'x' });
+    assert.ok(e3, 'customers cannot add campaigns');
+
+    // opening hours (Turkey time), including a late night that runs past midnight; 2026-10-12 is a Monday
+    const hours = { 1: ['20:00', '02:00'] };
+    const at = async (iso) => rpc(anon, 'branch_open_at', { p_hours: hours, p_at: iso });
+    assert.equal(await at('2026-10-12T21:00:00+03:00'), true);
+    assert.equal(await at('2026-10-13T01:30:00+03:00'), true, 'Monday night continues after midnight');
+    assert.equal(await at('2026-10-13T03:00:00+03:00'), false);
+    assert.equal(await at('2026-10-12T19:59:00+03:00'), false);
+    const { error: badHours } = await boss.client.from('branches').update({ opening_hours: { 9: ['08:00', '22:00'] } }).eq('id', 'pendik-marina');
+    assert.match(badHours?.message ?? '', /invalid_hours/);
+
+    const item = [{ product_id: 'su', quantity: 1 }];
+    const place = (extra = {}) => rpcError(c.client, 'place_order_v2', { p_branch_id: 'pendik-marina', p_payment_method: 'store', p_items: item, ...extra });
+    // closed every day → no orders now, no orders for later
+    await boss.client.from('branches').update({ opening_hours: {} }).eq('id', 'pendik-marina');
+    assert.match(await place(), /branch_closed_now/);
+    assert.match(await place({ p_pickup_at: new Date(Date.now() + 3 * 3600_000).toISOString() }), /pickup_outside_hours/);
+    await boss.client.from('branches').update({ opening_hours: null }).eq('id', 'pendik-marina');
+
+    // busy mode and pause: any staff of the branch; customers cannot
+    assert.match(await rpcError(c.client, 'staff_set_busy', { p_branch: 'pendik-marina', p_extra_minutes: 15 }), /not_allowed/);
+    const busy = await rpc(staff.client, 'staff_set_busy', { p_branch: 'pendik-marina', p_extra_minutes: 15 });
+    assert.equal(busy.busy_extra_minutes, 15); assert.ok(Date.parse(busy.busy_until) > Date.now() + 3600_000);
+    await rpc(staff.client, 'staff_pause_orders', { p_branch: 'pendik-marina', p_minutes: 30 });
+    assert.match(await place(), /branch_paused/);
+    const later = await rpc(c.client, 'place_order_v2', { p_branch_id: 'pendik-marina', p_payment_method: 'store', p_items: item,
+      p_pickup_at: new Date(Date.now() + 2 * 3600_000).toISOString() });
+    assert.equal(later.status, 'placed', 'pickups after the pause still come in');
+    assert.ok(Math.abs(Date.parse(later.pickup_at) - (Date.now() + 2 * 3600_000)) < 60_000);
+    await rpc(staff.client, 'staff_pause_orders', { p_branch: 'pendik-marina', p_minutes: 0 });
+    await rpc(staff.client, 'staff_set_busy', { p_branch: 'pendik-marina', p_extra_minutes: 0 });
+    assert.match(await place({ p_pickup_at: new Date(Date.now() + 60_000).toISOString() }), /pickup_too_soon/);
+    assert.match(await place({ p_pickup_at: new Date(Date.now() + 3 * 86400_000).toISOString() }), /pickup_too_late/);
+    const now = await rpc(c.client, 'place_order_v2', { p_branch_id: 'pendik-marina', p_payment_method: 'store', p_items: item });
+    assert.equal(now.pickup_at, null);
+    for (const o of [later, now]) await rpc(c.client, 'cancel_my_order', { p_order: o.id });
+  } finally {
+    await admin.from('branches').update({ opening_hours: null, paused_until: null, busy_extra_minutes: 0, busy_until: null }).eq('id', 'pendik-marina');
+    for (const id of [boss.id, c.id]) await admin.auth.admin.deleteUser(id);
+  }
+});
+
+await test('favourites, ratings, reports, birthday coffee and owner offers', async () => {
+  const boss = await newCustomer('Patron2');
+  const c = await newCustomer('Selim');
+  const token = `fcm-selim-${stamp}:APA91b${'z'.repeat(40)}`;
+  try {
+    await admin.from('staff_members').insert({ user_id: boss.id, branch_id: null, role: 'admin' });
+    await admin.from('push_tokens').insert({ token, user_id: c.id, platform: 'android' });
+
+    // favourites are private
+    const { error: fe } = await c.client.from('favorites').insert({ product_id: 'latte', milk_id: 'badem' });
+    assert.ifError(fe);
+    assert.equal((await c.client.from('favorites').select('product_id')).data.length, 1);
+    assert.equal((await b.client.from('favorites').select('id').eq('product_id', 'latte')).data.length, 0);
+
+    // rating: only the customer's own collected order
+    const o = await rpc(c.client, 'place_order_v2', { p_branch_id: 'pendik-marina', p_payment_method: 'store',
+      p_items: [{ product_id: 'su', quantity: 2 }] });
+    assert.match(await rpcError(c.client, 'rate_order', { p_order: o.id, p_liked: true }), /cannot_rate/);
+    for (const st of ['preparing', 'ready', 'collected']) await fn(staff, 'staff-order-status', { order_id: o.id, status: st });
+    assert.match(await rpcError(b.client, 'rate_order', { p_order: o.id, p_liked: true }), /order_not_found/);
+    await rpc(c.client, 'rate_order', { p_order: o.id, p_liked: false, p_comment: '  Biraz soğuktu  ' });
+    const r = await rpc(c.client, 'rate_order', { p_order: o.id, p_liked: true, p_comment: 'Harika' });
+    assert.equal(r.liked, true); assert.equal(r.comment, 'Harika');
+    const { data: seen } = await staff.client.from('orders').select('order_ratings(liked, comment)').eq('id', o.id).single();
+    assert.deepEqual(seen.order_ratings, { liked: true, comment: 'Harika' });
+
+    // report and export: owner for everything, managers for their branch, baristas not at all
+    const from = new Date(Date.now() - 3600_000).toISOString(), to = new Date(Date.now() + 3600_000).toISOString();
+    const rep = await rpc(boss.client, 'admin_report', { p_from: from, p_to: to });
+    assert.ok(rep.totals.orders >= 1 && rep.totals.revenue >= 6000);
+    assert.ok(rep.by_branch.some((x) => x.branch_id === 'pendik-marina'));
+    assert.ok(rep.top_products.some((x) => x.name === 'Su'));
+    assert.ok(rep.comments.some((x) => x.comment === 'Harika'));
+    assert.match(await rpcError(staff.client, 'admin_report', { p_from: from, p_to: to, p_branch: 'pendik-marina' }), /not_allowed/);
+    assert.match(await rpcError(c.client, 'admin_report', { p_from: from, p_to: to }), /not_allowed/);
+    const rows = await rpc(boss.client, 'admin_export_orders', { p_from: from, p_to: to, p_branch: 'pendik-marina' });
+    const mine = rows.find((x) => x.order_no === o.order_no);
+    assert.equal(mine.items, '2x Su'); assert.equal(mine.liked, true); assert.match(mine.handled_by, /Baristapendikmarina T\./);
+
+    // birthday coffee: today (Turkey time), once a year, with a notification
+    const today = new Date(Date.now() + 3 * 3600_000).toISOString().slice(5, 10);
+    await admin.from('profiles').update({ birthday: `1995-${today}` }).eq('id', c.id);
+    await admin.from('push_campaigns').delete().gt('id', 0);
+    const run1 = await rpc(admin, '_daily_customer_jobs', {});
+    assert.ok(run1.birthdays >= 1);
+    const { data: gifts } = await c.client.from('rewards').select('reason, expires_at').eq('reason', 'birthday');
+    assert.equal(gifts.length, 1);
+    assert.ok(Date.parse(gifts[0].expires_at) > Date.now() + 13 * 86400_000);
+    await rpc(admin, '_daily_customer_jobs', {});
+    assert.equal((await c.client.from('rewards').select('id').eq('reason', 'birthday')).data.length, 1, 'only once');
+
+    // owner offer to opted-in customers with notifications on
+    assert.match(await rpcError(c.client, 'admin_send_push', { p_title: 'x', p_body: 'y' }), /not_allowed/);
+    const aud = await rpc(boss.client, 'admin_push_audience', {});
+    assert.ok(aud.reachable >= 1 && aud.opted_in >= aud.reachable);
+    const sentCampaign = await rpc(boss.client, 'admin_send_push', { p_title: `Kampanya ${stamp}`, p_body: 'Soğuk kahveler %20' });
+    assert.ok(sentCampaign.recipients >= 1);
+    assert.match(await rpcError(boss.client, 'admin_send_push', { p_title: 'Tekrar', p_body: 'x' }), /campaign_too_soon/);
+
+    // the outbox function delivers both (FCM test double)
+    const res = await fetch(`${URL_}/functions/v1/push-outbox`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    assert.equal(res.status, 200, await res.clone().text());
+    const log = await (await fetch(`${MOCK}/push/log`)).json();
+    const toSelim = log.filter((m) => m.token === token);
+    assert.ok(toSelim.some((m) => m.data.title === 'İyi ki doğdun Selim! 🎂' && m.data.channelId === 'rewards'));
+    assert.ok(toSelim.some((m) => m.data.title === `Kampanya ${stamp}` && m.data.channelId === 'offers'));
+    const again = await (await fetch(`${URL_}/functions/v1/push-outbox`, { method: 'POST', body: '{}' })).json();
+    assert.equal(again.messages, 0, 'each message goes out once');
+  } finally {
+    await admin.from('push_campaigns').delete().gt('id', 0);
+    await admin.from('push_tokens').delete().eq('token', token);
+    for (const id of [boss.id, c.id]) await admin.auth.admin.deleteUser(id);
+  }
+});
+
 await test('deleting an account removes the person and keeps anonymous order records', async () => {
   const o = await rpc(b.client, 'place_order', { p_branch_id: 'pendik-marina', p_payment_method: 'store',
     p_items: [{ product_id: 'su', quantity: 1 }] });

@@ -53,7 +53,7 @@ Mağazada satıcı adı olarak şirket unvanı görünür; kişisel hesap açmay
 ```bash
 supabase login
 supabase link --project-ref <proje-ref>        # Dashboard → Project Settings → General
-supabase db push                                # 8 migration: şema, iş kuralları, güvenlik, iade, kart anahtarı, şube bildirimi, ekip yönetimi, sipariş kayıtları
+supabase db push                                # 13 migration: şema, iş kuralları, güvenlik, iade, kart anahtarı, şube bildirimi, ekip, sipariş kayıtları, yönetici araçları, çalışma saatleri, bildirim kutusu, favori/değerlendirme, rapor
 ```
 
 Ardından SQL Editor'da, yeni siparişlerin baristalara bildirim olarak gitmesi için:
@@ -69,11 +69,11 @@ update public.app_settings set functions_url = 'https://<proje-ref>.supabase.co/
 
 ```sql
 select count(*) from public.products;                -- 42
-select jobname, schedule from cron.job;              -- expire-unpaid-orders, */10 * * * *
+select jobname, schedule from cron.job;              -- daily-customer-jobs, expire-unpaid-orders, notify-scheduled-orders
 select * from pg_publication_tables where pubname = 'supabase_realtime';   -- orders, product_availability
 ```
 
-`cron.job` boşsa: Dashboard → Database → Extensions → **pg_cron**'u açın, ardından `supabase/migrations/20261010120200_security.sql` içindeki "scheduled cleanup" bloğunu SQL Editor'da tekrar çalıştırın.
+`cron.job` boşsa: Dashboard → Database → Extensions → **pg_cron**'u açın, ardından `20261010120200_security.sql` ("scheduled cleanup"), `20261013090100_hours_busy_scheduling.sql` ve `20261013090200_outbox_marketing.sql` dosyalarının sonundaki `cron.schedule` bloklarını SQL Editor'da tekrar çalıştırın.
 
 ✅ Tablolar dolu, zamanlanmış görev ve Realtime yayını var.
 
@@ -98,10 +98,10 @@ Android bildirimleri için ayrıca `FCM_SERVICE_ACCOUNT` secret'ı gerekir (6. a
 
 ```bash
 supabase secrets set --env-file supabase/.env.production
-supabase functions deploy           # iyzico-checkout, iyzico-callback, iyzico-status, staff-order-status, delete-account, notify-branch
+supabase functions deploy           # iyzico-checkout, iyzico-callback, iyzico-status, staff-order-status, delete-account, notify-branch, push-outbox
 ```
 
-`notify-branch` da JWT doğrulaması olmadan yayınlanır: onu kullanıcı değil veritabanı çağırır (sipariş şubeye düştüğünde, pg_net ile). Her siparişi yalnızca bir kez ve yalnızca o şubenin personeline bildirir.
+`notify-branch` ve `push-outbox` da JWT doğrulaması olmadan yayınlanır: onları kullanıcı değil veritabanı çağırır (pg_net ile). `notify-branch` her siparişi yalnızca bir kez ve yalnızca o şubenin personeline bildirir; `push-outbox` yalnızca veritabanının kutuya koyduğu kampanya / doğum günü bildirimlerini gönderir.
 
 `iyzico-callback` fonksiyonu JWT doğrulaması olmadan yayınlanır (`supabase/config.toml` içinde `verify_jwt = false`). iyzico ödeme sonrası tarayıcıyı bu adrese yönlendirir. Güvenlik, ödemenin iyzico'dan imzalı olarak tekrar sorgulanmasıyla sağlanır. Dashboard → Edge Functions'ta bu fonksiyonun "Verify JWT" ayarının kapalı olduğunu kontrol edin.
 

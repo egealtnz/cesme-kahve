@@ -4,6 +4,7 @@ import { Check, ChevronRight, Clock, Search, Store } from 'lucide-react-native';
 import { Txt } from './Txt';
 import { Badge } from './Badge';
 import { trLower } from '@/lib/format';
+import { branchState } from '@/lib/hours';
 import type { Branch } from '@/lib/types';
 import { color, font, radius, shadow, space } from '@/theme/tokens';
 
@@ -43,13 +44,15 @@ export function BranchList({ branches, selectedId, onSelect, showChevron }: Prop
             <View style={{ gap: space[2], marginTop: space[3] }}>
               {g.items.map((b) => {
                 const selected = b.id === selectedId;
-                const closed = b.status !== 'open' || !b.accepts_orders;
+                const st = branchState(b);
+                const closed = !st.orderable;
+                const note = st.kind === 'paused' || st.kind === 'closed' ? st.label : null;
                 return (
                   <Pressable
                     key={b.id}
                     accessibilityRole="radio"
                     accessibilityState={{ selected, disabled: closed }}
-                    accessibilityLabel={`${b.name}, ${b.district}, ${b.city}${closed ? ', şu an sipariş almıyor' : `, yaklaşık ${b.prep_minutes} dakika`}`}
+                    accessibilityLabel={`${b.name}, ${b.district}, ${b.city}, ${closed ? 'şu an sipariş almıyor' : note ?? `yaklaşık ${st.waitMinutes} dakika`}`}
                     disabled={closed}
                     onPress={() => onSelect(b)}
                     style={({ pressed }) => [styles.row, closed && styles.rowClosed, selected && styles.rowOn, pressed && { opacity: 0.9 }]}
@@ -60,13 +63,16 @@ export function BranchList({ branches, selectedId, onSelect, showChevron }: Prop
                     <View style={{ flex: 1 }}>
                       <Txt variant="body" style={{ fontFamily: 'DMSans-SemiBold' }} color={closed ? 'inkMuted' : 'ink'}>{b.name}</Txt>
                       <Txt variant="bodySm" color="inkMuted">{b.district} · {b.city}</Txt>
+                      {note ? <Txt variant="caption" color="warning" style={{ marginTop: 2 }}>{note} · ileri saate sipariş verilebilir</Txt> : null}
                     </View>
                     {b.status === 'coming_soon' ? <Badge label="Yakında" /> : closed ? <Badge label="Kapalı" /> : selected ? (
                       <View style={styles.check}><Check size={16} color={color.onPrimary} strokeWidth={2} /></View>
                     ) : (
                       <View style={styles.meta}>
-                        <Clock size={16} color={color.inkMuted} strokeWidth={1.75} />
-                        <Txt variant="caption" color="inkMuted">~{b.prep_minutes} dk</Txt>
+                        <Clock size={16} color={st.kind === 'busy' ? color.warning : color.inkMuted} strokeWidth={1.75} />
+                        <Txt variant="caption" color={st.kind === 'busy' ? 'warning' : 'inkMuted'}>
+                          {st.kind === 'busy' ? `Yoğun · ~${st.waitMinutes} dk` : st.orderNow ? `~${st.waitMinutes} dk` : 'İleri saat'}
+                        </Txt>
                         {showChevron ? <ChevronRight size={20} color={color.inkMuted} strokeWidth={1.75} /> : null}
                       </View>
                     )}

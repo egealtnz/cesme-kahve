@@ -70,7 +70,7 @@ export default function LoyaltyScreen() {
               >
                 <View style={styles.rewardDisc}><Coffee size={18} color={color.onSecondary} strokeWidth={1.75} /></View>
                 <View style={{ flex: 1 }}>
-                  <Txt variant="body" style={{ fontFamily: 'DMSans-SemiBold' }}>Hediye kahve</Txt>
+                  <Txt variant="body" style={{ fontFamily: 'DMSans-SemiBold' }}>{r.reason === 'birthday' ? 'Doğum günü kahven 🎂' : 'Hediye kahve'}</Txt>
                   <Txt variant="caption" color="inkMuted">Son kullanma {shortDate(r.expires_at)}</Txt>
                 </View>
                 <QrIcon size={22} color={color.ink} strokeWidth={1.75} />

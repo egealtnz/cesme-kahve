@@ -443,3 +443,7 @@ verify_jwt = true
 # Called by the database (pg_net) when an order is placed; announces it once to that branch's staff.
 [functions.notify-branch]
 verify_jwt = false
+
+# Sends owner offers, birthday coffees and win-back messages waiting in push_outbox; poked by the database.
+[functions.push-outbox]
+verify_jwt = false

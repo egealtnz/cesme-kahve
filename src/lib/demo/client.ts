@@ -11,9 +11,10 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { priceCart } from '../pricing';
-import type { Milk, Order, OrderItem, Product, Profile, Reward, Settings } from '../types';
+import type { Branch, Milk, Order, OrderItem, Product, Profile, Reward, Settings } from '../types';
 import catalogue from './catalogue.json';
-import { DEMO_CODE, DEMO_CUSTOMER, DEMO_MANAGER, DEMO_MEMBER_CODE, DEMO_REWARD_CODE, DEMO_STAFF } from './constants';
+import { DEMO_CODE, DEMO_CUSTOMER, DEMO_MANAGER, DEMO_MEMBER_CODE, DEMO_OWNER, DEMO_REWARD_CODE, DEMO_STAFF } from './constants';
+import { isOpenAt } from '../hours';
 
 
 const STORE_KEY = 'ck.demo.v2';
@@ -21,6 +22,10 @@ const settings = catalogue.app_settings as unknown as Settings & { max_open_orde
 const products = catalogue.products as unknown as (Product & { is_active: boolean })[];
 const categories = catalogue.menu_categories as unknown as { id: string; is_drink: boolean; is_active: boolean }[];
 const milks = catalogue.milk_options as unknown as (Milk & { is_active: boolean })[];
+const branches = catalogue.branches as unknown as Branch[];
+const campaignsList = catalogue.campaigns as unknown as Row[];
+// Owner edits (menu, branches, campaigns, settings) are applied over a pristine copy of the catalogue.
+const PRISTINE = JSON.parse(JSON.stringify(catalogue)) as typeof catalogue;
 
 // Simulated barista timing (seconds after the order reaches the branch).
 const SIM_PREPARING = 8;
@@ -39,6 +44,10 @@ type State = {
   staff: { user_id: string; branch_id: string | null; role: 'barista' | 'manager' | 'admin'; created_at?: string }[];
   invites?: { email: string; branch_id: string; role: 'barista' | 'manager'; created_at: string }[];
   events?: { order_id: string; status: Order['status']; actor_name: string | null; created_at: string }[];
+  ratings?: { order_id: string; user_id: string | null; liked: boolean; comment: string | null; created_at: string }[];
+  favorites?: { id: number; user_id: string; product_id: string; milk_id: string | null; created_at: string }[];
+  pushCampaigns?: { id: number; title: string; body: string; branch_id: string | null; recipients: number; created_at: string }[];
+  edits?: { products?: Row[]; campaigns?: Row[]; branches?: Row[]; settings?: Row };
   rewards: DemoReward[];
   orders: DemoOrder[];
   items: DemoItem[];
@@ -67,6 +76,66 @@ const normalizeCode = (raw: unknown) => String(raw ?? '').toUpperCase().replace(
 
 // ---------------------------------------------------------------- initial data
 const MANAGER_ID = 'u-manager';
+const OWNER_ID = 'u-owner';
+
+/** A month of finished orders across a few branches, so the owner's report has something to show. */
+function demoHistory(startNo: number) {
+  const names = ['Ayşe', 'Mehmet', 'Zeynep', 'Can', 'Elif', 'Burak', 'Deniz', 'Ece', 'Mert', 'Selin', 'Kerem', 'Nil'];
+  const shops = ['alacati', 'alacati', 'korfez', 'pendik-marina', 'izmit-merkez'];
+  const menu = [['latte', 'tam'], ['cappuccino', 'tam'], ['americano', null], ['latte', 'badem'], ['flat-white', 'tam'],
+    ['kruvasan-tereyagli', null], ['turk-kahvesi', null], ['cortado', 'yagsiz'], ['su', null]] as [string, string | null][];
+  const baristas = ['Ece K.', 'Can Ö.', 'Derya A.', 'Mert Y.'];
+  const comments = ['Latte harikaydı', 'Biraz bekledim ama lezzetliydi', 'Çok hızlı hazırlandı, teşekkürler', 'Kahve biraz soğuktu', 'Kruvasan taptaze'];
+  let rnd = 7;
+  const r = (n: number) => { rnd = (rnd * 9301 + 49297) % 233280; return Math.floor((rnd / 233280) * n); };
+  const orders: DemoOrder[] = [];
+  const items: DemoItem[] = [];
+  const events: NonNullable<State['events']> = [];
+  const ratings: NonNullable<State['ratings']> = [];
+  let itemId = 100;
+  for (let i = 0; i < 90; i++) {
+    const daysBack = Math.floor(i / 3);
+    const hour = [8, 8, 9, 9, 10, 12, 13, 15, 16, 17, 18, 19][r(12)];
+    const created = new Date();
+    created.setDate(created.getDate() - daysBack - 1);
+    created.setHours(hour, r(60), 0, 0);
+    const id = `o-h${i}`;
+    const lines = Array.from({ length: 1 + r(3) }, () => menu[r(menu.length)]);
+    let subtotal = 0;
+    let coffees = 0;
+    for (const [pid, milkId] of lines) {
+      const prod = products.find((p) => p.id === pid);
+      if (!prod) continue;
+      const milk = milkId ? milks.find((m) => m.id === milkId) ?? null : null;
+      const qty = 1 + (r(5) === 0 ? 1 : 0);
+      subtotal += (prod.price + (milk?.extra_price ?? 0)) * qty;
+      if (prod.is_coffee) coffees += qty;
+      items.push({ id: itemId++, order_id: id, product_id: prod.id, product_name: prod.name, milk_label: milk?.label ?? null,
+        unit_price: prod.price + (milk?.extra_price ?? 0), quantity: qty, free_quantity: 0, is_coffee: prod.is_coffee });
+    }
+    const cancelled = r(14) === 0;
+    const at = (min: number) => new Date(created.getTime() + min * 60_000).toISOString();
+    orders.push({
+      id, order_no: startNo + i, user_id: `u-guest-${r(40)}`, customer_name: names[r(names.length)], branch_id: shops[r(shops.length)],
+      status: cancelled ? 'cancelled' : 'collected', payment_method: 'store', payment_status: cancelled ? 'unpaid' : 'paid',
+      eco_packaging: true, own_cup: false, subtotal, reward_discount: 0, campaign_discount: 0, cup_discount: 0, total: subtotal,
+      rewards_used: 0, stamps_earned: coffees, created_at: created.toISOString(), ready_at: cancelled ? null : at(6),
+      collected_at: cancelled ? null : at(9), cancelled_at: cancelled ? at(2) : null, cancel_reason: cancelled ? 'customer' : null,
+      paid_at: cancelled ? null : at(9), sim: false, sim_at: null, stamps_awarded: true, pickup_at: r(10) === 0 ? at(30) : null,
+    } as DemoOrder);
+    if (!cancelled) {
+      const who = baristas[r(baristas.length)];
+      events.push({ order_id: id, status: 'preparing', actor_name: who, created_at: at(1) },
+        { order_id: id, status: 'ready', actor_name: who, created_at: at(6) },
+        { order_id: id, status: 'collected', actor_name: baristas[r(baristas.length)], created_at: at(9) });
+      if (r(3) === 0) {
+        const liked = r(6) !== 0;
+        ratings.push({ order_id: id, user_id: null, liked, comment: r(2) === 0 ? comments[liked ? r(3) === 0 ? 4 : r(3) : 3] : null, created_at: at(40) });
+      }
+    }
+  }
+  return { orders, items, events, ratings };
+}
 
 function seed(): State {
   const demo = 'u-demo', barista = 'u-barista', mert = 'u-mert', selin = 'u-selin';
@@ -94,17 +163,20 @@ function seed(): State {
       { id: demo, email: DEMO_CUSTOMER.email, password: DEMO_CUSTOMER.password, confirmed: true, meta: {} },
       { id: barista, email: DEMO_STAFF.email, password: DEMO_STAFF.password, confirmed: true, meta: {} },
       { id: MANAGER_ID, email: DEMO_MANAGER.email, password: DEMO_MANAGER.password, confirmed: true, meta: {} },
+      { id: OWNER_ID, email: DEMO_OWNER.email, password: DEMO_OWNER.password, confirmed: true, meta: {} },
     ],
     profiles: [
       profile(demo, 'Deniz', 'Yılmaz', DEMO_MEMBER_CODE, 7, { favorite_branch_id: 'alacati' }),
       profile(barista, 'Ece', 'Kaya', 'B7RQ2MXK4T', 0),
       profile(MANAGER_ID, 'Can', 'Öztürk', 'C5NW8KQT3M', 0),
+      profile(OWNER_ID, 'Selda', 'Arslan', 'Y8PL2RTK5N', 0),
       profile(mert, 'Mert', 'Aydın', 'M4KX7PRT2B', 3),
       profile(selin, 'Selin', 'Demir', 'S9HW3NCE6Q', 5),
     ],
     staff: [
       { user_id: barista, branch_id: 'alacati', role: 'barista', created_at: ago(86400 * 40) },
       { user_id: MANAGER_ID, branch_id: 'alacati', role: 'manager', created_at: ago(86400 * 90) },
+      { user_id: OWNER_ID, branch_id: null, role: 'admin', created_at: ago(86400 * 365) },
     ],
     invites: [],
     events: [
@@ -141,8 +213,21 @@ function seed(): State {
   };
 }
 
+function seedWithHistory(): State {
+  const base = seed();
+  const h = demoHistory(900);
+  base.orders.push(...h.orders);
+  base.items.push(...h.items);
+  base.events = [...(base.events ?? []), ...h.events];
+  base.ratings = [{ order_id: 'o-1001', user_id: 'u-demo', liked: true, comment: 'Badem sütlü latte çok iyiydi', created_at: ago(86400 * 3 - 3600) }, ...h.ratings];
+  base.favorites = [{ id: 1, user_id: 'u-demo', product_id: 'latte', milk_id: 'badem', created_at: ago(86400 * 10) }];
+  base.pushCampaigns = [];
+  base.edits = {};
+  return base;
+}
+
 // ---------------------------------------------------------------- the store
-let state: State = seed();
+let state: State = seedWithHistory();
 const ready: Promise<void> = AsyncStorage.getItem(STORE_KEY)
   .then((raw) => {
     if (!raw) return;
@@ -151,6 +236,19 @@ const ready: Promise<void> = AsyncStorage.getItem(STORE_KEY)
       state = saved;
       state.invites ??= [];
       state.events ??= [];
+      if (!state.ratings) {   // preview saved before the owner tools existed
+        const fresh = seedWithHistory();
+        Object.assign(state, { ratings: fresh.ratings, favorites: fresh.favorites, pushCampaigns: [], edits: {} });
+        state.orders.push(...fresh.orders.filter((o) => o.id.startsWith('o-h')));
+        state.items.push(...fresh.items.filter((i) => i.order_id.startsWith('o-h')));
+        state.events.push(...(fresh.events ?? []).filter((e) => e.order_id.startsWith('o-h')));
+      }
+      if (!state.users.some((u) => u.id === OWNER_ID)) {
+        const fresh = seed();
+        state.users.push(fresh.users.find((u) => u.id === OWNER_ID)!);
+        state.profiles.push(fresh.profiles.find((x) => x.id === OWNER_ID)!);
+        state.staff.push(fresh.staff.find((x) => x.user_id === OWNER_ID)!);
+      }
       if (!state.users.some((u) => u.id === MANAGER_ID)) {
         const fresh = seed();
         state.users.push(fresh.users.find((u) => u.id === MANAGER_ID)!);
@@ -159,7 +257,26 @@ const ready: Promise<void> = AsyncStorage.getItem(STORE_KEY)
       }
     }
   })
-  .catch(() => undefined);
+  .catch(() => undefined)
+  .then(() => applyEdits());
+
+function applyEdits() {
+  const e = state.edits ?? {};
+  const put = (target: Row[], value: Row[] | undefined, original: Row[]) => target.splice(0, target.length, ...clone(value ?? original));
+  put(products as unknown as Row[], e.products, PRISTINE.products as unknown as Row[]);
+  put(campaignsList, e.campaigns, PRISTINE.campaigns as unknown as Row[]);
+  put(branches as unknown as Row[], e.branches, PRISTINE.branches as unknown as Row[]);
+  for (const k of Object.keys(settings)) delete (settings as unknown as Row)[k];
+  Object.assign(settings, clone(PRISTINE.app_settings), e.settings ?? {});
+}
+function saveEdits(kind: 'products' | 'campaigns' | 'branches' | 'settings') {
+  state.edits ??= {};
+  if (kind === 'products') state.edits.products = clone(products as unknown as Row[]);
+  if (kind === 'campaigns') state.edits.campaigns = clone(campaignsList);
+  if (kind === 'branches') state.edits.branches = clone(branches as unknown as Row[]);
+  if (kind === 'settings') state.edits.settings = clone(settings as unknown as Row);
+  save();
+}
 
 function save() {
   AsyncStorage.setItem(STORE_KEY, JSON.stringify(state)).catch(() => undefined);
@@ -241,11 +358,13 @@ function tick() {
 function tableRows(table: string): Row[] {
   const me = uid();
   switch (table) {
-    case 'branches': return catalogue.branches as Row[];
-    case 'menu_categories': return categories.filter((c) => c.is_active) as Row[];
-    case 'products': return products.filter((p) => p.is_active) as Row[];
+    case 'branches': return branches as unknown as Row[];
+    case 'menu_categories': return (isAdmin() ? categories : categories.filter((c) => c.is_active)) as Row[];
+    case 'products': return (isAdmin() ? products : products.filter((p) => p.is_active)) as unknown as Row[];
     case 'milk_options': return milks.filter((m) => m.is_active) as Row[];
-    case 'campaigns': return (catalogue.campaigns as Row[]).filter((c) => c.is_active);
+    case 'campaigns': return isAdmin() ? campaignsList : campaignsList.filter((c) => c.is_active);
+    case 'favorites': return (state.favorites ?? []).filter((f) => f.user_id === me) as Row[];
+    case 'push_campaigns': return isAdmin() ? (state.pushCampaigns ?? []) as Row[] : [];
     case 'app_settings': return [settings as unknown as Row];
     case 'product_availability': return state.availability as Row[];
     case 'profiles': return state.profiles.filter((p) => p.id === me) as Row[];
@@ -271,6 +390,10 @@ function project(row: Row, table: string, cols: string): Row {
         ? (state.events ?? []).filter((e) => e.order_id === row.id)
           .map((e) => Object.fromEntries(fields.map((f) => [f, (e as Row)[f]])))
         : [];
+    } else if (embed && table === 'orders' && embed[2] === 'order_ratings') {
+      const rt = (state.ratings ?? []).find((x) => x.order_id === row.id);
+      const visible = rt && (rt.user_id === uid() || isStaff(row.branch_id as string));
+      out[embed[1] ?? 'order_ratings'] = visible ? { liked: rt.liked, comment: rt.comment } : null;
     } else if (embed && table === 'orders' && embed[2] === 'branches') {
       const b = (catalogue.branches as Row[]).find((x) => x.id === row.branch_id) ?? {};
       const fields = embed[3].split(',').map((f) => f.trim());
@@ -286,13 +409,52 @@ function project(row: Row, table: string, cols: string): Row {
 type Filter = (r: Row) => boolean;
 type Result = { data: unknown; error: { message: string; code?: string } | null };
 
+function writeInsert(table: string, row: Row, cols: string): Result {
+  const me = uid();
+  if (table === 'favorites') {
+    if (!me) return { data: null, error: { message: 'not_authenticated' } };
+    const list = (state.favorites ??= []);
+    if (list.some((f) => f.user_id === me && f.product_id === row.product_id && (f.milk_id ?? null) === (row.milk_id ?? null))) {
+      return { data: null, error: { message: 'duplicate key value violates unique constraint' } };
+    }
+    if (list.filter((f) => f.user_id === me).length >= 30) return { data: null, error: { message: 'too_many_favorites' } };
+    list.unshift({ id: Date.now(), user_id: me, product_id: String(row.product_id), milk_id: (row.milk_id as string) ?? null, created_at: nowIso() });
+    save();
+    return { data: null, error: null };
+  }
+  if ((table === 'products' || table === 'campaigns') && isAdmin()) {
+    const target = table === 'products' ? (products as unknown as Row[]) : campaignsList;
+    const full = table === 'products'
+      ? { description: null, image_path: null, badge: null, is_coffee: false, has_milk_options: false, is_active: true, sort: 900, ...row }
+      : { eyebrow: null, body: null, starts_at: null, ends_at: null, is_active: true, sort: 50, tone: 'surface', ...row };
+    target.push(full);
+    saveEdits(table);
+    return { data: [project(full, table, cols)], error: null };
+  }
+  return { data: null, error: { message: 'permission denied' } };
+}
+
+function writeDelete(table: string, rows: Row[]): Result {
+  if (table === 'favorites') {
+    state.favorites = (state.favorites ?? []).filter((f) => !rows.includes(f as unknown as Row));
+    save();
+    return { data: null, error: null };
+  }
+  if (table === 'campaigns' && isAdmin()) {
+    for (const r of rows) campaignsList.splice(campaignsList.indexOf(r), 1);
+    saveEdits('campaigns');
+    return { data: null, error: null };
+  }
+  return { data: null, error: { message: 'permission denied' } };
+}
+
 class Query implements PromiseLike<Result> {
   private filters: Filter[] = [];
   private cols = '*';
   private sort: { col: string; asc: boolean } | null = null;
   private max: number | null = null;
   private one = false;
-  private mode: 'select' | 'update' | 'upsert' = 'select';
+  private mode: 'select' | 'update' | 'upsert' | 'insert' | 'delete' = 'select';
   private patch: Row = {};
 
   constructor(private table: string) {}
@@ -309,6 +471,9 @@ class Query implements PromiseLike<Result> {
   single() { this.one = true; return this; }
   update(patch: Row) { this.mode = 'update'; this.patch = patch; return this; }
   upsert() { this.mode = 'upsert'; return this; }
+  insert(row: Row) { this.mode = 'insert'; this.patch = row; return this; }
+  delete() { this.mode = 'delete'; return this; }
+  maybeSingle() { this.one = true; return this; }
 
   then<A = Result, B = never>(ok?: ((v: Result) => A | PromiseLike<A>) | null, fail?: ((e: unknown) => B | PromiseLike<B>) | null) {
     return this.run().then(ok, fail);
@@ -319,12 +484,27 @@ class Query implements PromiseLike<Result> {
     tick();
     if (this.mode === 'upsert') return { data: null, error: null };   // push tokens: nothing to send in the demo
     let rows = tableRows(this.table).filter((r) => this.filters.every((f) => f(r)));
+    if (this.mode === 'insert') return writeInsert(this.table, this.patch, this.cols);
+    if (this.mode === 'delete') return writeDelete(this.table, rows);
     if (this.mode === 'update') {
-      const allowed = ['first_name', 'last_name', 'phone', 'birthday', 'favorite_branch_id', 'marketing_opt_in'];
-      if (this.table !== 'profiles') return { data: null, error: { message: 'permission denied' } };
-      for (const r of rows) for (const k of Object.keys(this.patch)) if (allowed.includes(k)) r[k] = this.patch[k];
-      save();
-      return { data: null, error: null };
+      if (this.table === 'profiles') {
+        const allowed = ['first_name', 'last_name', 'phone', 'birthday', 'favorite_branch_id', 'marketing_opt_in'];
+        for (const r of rows) for (const k of Object.keys(this.patch)) if (allowed.includes(k)) r[k] = this.patch[k];
+        save();
+        return { data: null, error: null };
+      }
+      const editable: Record<string, 'products' | 'campaigns' | 'branches' | 'settings'> = {
+        products: 'products', campaigns: 'campaigns', branches: 'branches', app_settings: 'settings',
+      };
+      if (!editable[this.table] || !isAdmin()) return { data: [], error: null };
+      if (this.table === 'branches' && 'opening_hours' in this.patch && this.patch.opening_hours) {
+        const ok = Object.entries(this.patch.opening_hours as Row).every(([k, v]) => /^[1-7]$/.test(k) && Array.isArray(v)
+          && v.length === 2 && v.every((t) => /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(String(t))));
+        if (!ok) return { data: null, error: { message: 'invalid_hours' } };
+      }
+      for (const r of rows) Object.assign(r, this.patch);
+      saveEdits(editable[this.table]);
+      return { data: clone(rows.map((r) => project(r, this.table, this.cols))), error: null };
     }
     if (this.sort) {
       const { col, asc } = this.sort;
@@ -539,6 +719,136 @@ const rpcs: Record<string, (p: Row) => unknown> = {
 };
 
 // ---------------------------------------------------------------- edge functions
+// ---- owner tools, busy mode, orders for later, ratings (same rules as the 2026-10-13 migrations)
+Object.assign(rpcs, {
+  is_admin: () => isAdmin(),
+  place_order_v2(p: Row) {
+    const b = branches.find((x) => x.id === p.p_branch_id);
+    if (!b) throw new DemoError('branch_not_found');
+    const pickup = p.p_pickup_at ? new Date(String(p.p_pickup_at)) : null;
+    if (pickup) {
+      if (pickup.getTime() < Date.now() + b.prep_minutes * 60_000) throw new DemoError('pickup_too_soon');
+      if (pickup.getTime() > Date.now() + 2 * 86_400_000) throw new DemoError('pickup_too_late');
+    }
+    const at = pickup ?? new Date();
+    if (b.paused_until && Date.parse(b.paused_until) > Date.now() && at.getTime() < Date.parse(b.paused_until)) throw new DemoError('branch_paused');
+    if (!isOpenAt(b.opening_hours, at)) throw new DemoError(pickup ? 'pickup_outside_hours' : 'branch_closed_now');
+    const created = rpcs.place_order(p) as Order;
+    const o = state.orders.find((x) => x.id === created.id)!;
+    if (pickup) {
+      o.pickup_at = pickup.toISOString();
+      // the simulated barista starts when it is time to prepare it
+      if (o.sim) o.sim_at = new Date(pickup.getTime() - (b.prep_minutes + 1) * 60_000).toISOString();
+      save();
+    }
+    return publicOrder(o);
+  },
+  staff_set_busy(p: Row) {
+    requireStaff(String(p.p_branch));
+    const b = branches.find((x) => x.id === p.p_branch)!;
+    const n = Number(p.p_extra_minutes);
+    if (!Number.isInteger(n) || n < 0 || n > 60) throw new DemoError('invalid_quantity');
+    b.busy_extra_minutes = n;
+    b.busy_until = n > 0 ? new Date(Date.now() + 2 * 3600_000).toISOString() : null;
+    saveEdits('branches');
+    return b;
+  },
+  staff_pause_orders(p: Row) {
+    requireStaff(String(p.p_branch));
+    const b = branches.find((x) => x.id === p.p_branch)!;
+    const n = Number(p.p_minutes);
+    if (!Number.isInteger(n) || n < 0 || n > 240) throw new DemoError('invalid_quantity');
+    b.paused_until = n > 0 ? new Date(Date.now() + n * 60_000).toISOString() : null;
+    saveEdits('branches');
+    return b;
+  },
+  rate_order(p: Row) {
+    const me = requireUser();
+    const o = state.orders.find((x) => x.id === p.p_order && x.user_id === me);
+    if (!o) throw new DemoError('order_not_found');
+    if (o.status !== 'collected' || !o.collected_at || Date.parse(o.collected_at) < Date.now() - 7 * 86_400_000) throw new DemoError('cannot_rate');
+    const list = (state.ratings ??= []);
+    const comment = String(p.p_comment ?? '').trim().slice(0, 500) || null;
+    const existing = list.find((x) => x.order_id === o.id);
+    if (existing) Object.assign(existing, { liked: !!p.p_liked, comment, created_at: nowIso() });
+    else list.push({ order_id: o.id, user_id: me, liked: !!p.p_liked, comment, created_at: nowIso() });
+    save();
+    return { liked: !!p.p_liked, comment };
+  },
+  admin_report(p: Row) {
+    const branch = (p.p_branch as string | null) ?? null;
+    if (!(isAdmin() || (branch && canManage(branch)))) throw new DemoError('not_allowed');
+    const from = String(p.p_from), to = String(p.p_to);
+    const all = state.orders.filter((o) => o.created_at >= from && o.created_at < to && (!branch || o.branch_id === branch)
+      && (o.status === 'collected' || o.status === 'cancelled'));
+    const done = all.filter((o) => o.status === 'collected');
+    const items = state.items.filter((i) => done.some((o) => o.id === i.order_id));
+    const rts = (state.ratings ?? []).filter((r) => all.some((o) => o.id === r.order_id));
+    const tr = (iso: string) => new Date(Date.parse(iso) + 3 * 3600_000);
+    const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+    const byBranch = new Map<string, { orders: number; revenue: number }>();
+    for (const o of done) { const x = byBranch.get(o.branch_id) ?? { orders: 0, revenue: 0 }; x.orders++; x.revenue += o.total; byBranch.set(o.branch_id, x); }
+    const prod = new Map<string, { qty: number; revenue: number }>();
+    for (const i of items) { const x = prod.get(i.product_name) ?? { qty: 0, revenue: 0 }; x.qty += i.quantity; x.revenue += i.unit_price * (i.quantity - i.free_quantity); prod.set(i.product_name, x); }
+    const hours = new Map<number, number>();
+    for (const o of done) { const h = tr(o.created_at).getUTCHours(); hours.set(h, (hours.get(h) ?? 0) + 1); }
+    const days = new Map<string, { orders: number; revenue: number }>();
+    for (const o of done) { const d = tr(o.created_at).toISOString().slice(0, 10); const x = days.get(d) ?? { orders: 0, revenue: 0 }; x.orders++; x.revenue += o.total; days.set(d, x); }
+    const rtOf = (bid: string, liked: boolean) => rts.filter((r) => r.liked === liked && all.find((o) => o.id === r.order_id)?.branch_id === bid).length;
+    return {
+      totals: {
+        orders: done.length, revenue: sum(done.map((o) => o.total)), avg_ticket: done.length ? Math.round(sum(done.map((o) => o.total)) / done.length) : 0,
+        coffees: sum(items.filter((i) => i.is_coffee).map((i) => i.quantity)), cancelled: all.length - done.length,
+        customers: new Set(done.map((o) => o.user_id)).size, likes: rts.filter((r) => r.liked).length, dislikes: rts.filter((r) => !r.liked).length,
+        scheduled: done.filter((o) => o.pickup_at).length,
+      },
+      by_branch: [...byBranch.entries()].map(([id, x]) => ({ branch_id: id, name: branches.find((b) => b.id === id)?.name ?? id, ...x, likes: rtOf(id, true), dislikes: rtOf(id, false) }))
+        .sort((a, b) => b.revenue - a.revenue),
+      top_products: [...prod.entries()].map(([name, x]) => ({ name, ...x })).sort((a, b) => b.qty - a.qty).slice(0, 10),
+      by_hour: [...hours.entries()].map(([hour, orders]) => ({ hour, orders })).sort((a, b) => a.hour - b.hour),
+      by_day: [...days.entries()].map(([day, x]) => ({ day, ...x })).sort((a, b) => a.day.localeCompare(b.day)),
+      comments: rts.filter((r) => r.comment).sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 20).map((r) => {
+        const o = all.find((x) => x.id === r.order_id)!;
+        return { liked: r.liked, comment: r.comment, created_at: r.created_at, branch: branches.find((b) => b.id === o.branch_id)?.name ?? '', order_no: o.order_no };
+      }),
+    };
+  },
+  admin_export_orders(p: Row) {
+    const branch = (p.p_branch as string | null) ?? null;
+    if (!(isAdmin() || (branch && canManage(branch)))) throw new DemoError('not_allowed');
+    const from = String(p.p_from), to = String(p.p_to);
+    return state.orders.filter((o) => o.created_at >= from && o.created_at < to && (!branch || o.branch_id === branch)
+      && (o.status === 'collected' || o.status === 'cancelled'))
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))
+      .map((o) => {
+        const rt = (state.ratings ?? []).find((r) => r.order_id === o.id);
+        return {
+          order_no: o.order_no, created_at: o.created_at, pickup_at: o.pickup_at ?? null, branch: branches.find((b) => b.id === o.branch_id)?.name ?? '',
+          customer: o.customer_name ?? 'Misafir', status: o.status, payment: o.payment_method, subtotal: o.subtotal, discount: o.subtotal - o.total,
+          total: o.total, items: state.items.filter((i) => i.order_id === o.id).map((i) => `${i.quantity}x ${i.product_name}${i.milk_label ? ` (${i.milk_label})` : ''}`).join(', '),
+          liked: rt ? rt.liked : null, comment: rt?.comment ?? null,
+          handled_by: [...new Set((state.events ?? []).filter((e) => e.order_id === o.id).map((e) => e.actor_name))].join(', ') || null,
+        };
+      });
+  },
+  admin_push_audience(p: Row) {
+    if (!isAdmin()) throw new DemoError('not_allowed');
+    const list = state.profiles.filter((x) => x.marketing_opt_in && (!p.p_branch || x.favorite_branch_id === p.p_branch));
+    return { reachable: list.length * 37 + 12, opted_in: list.length * 52 + 20 };   // a believable audience for the preview
+  },
+  admin_send_push(p: Row) {
+    if (!isAdmin()) throw new DemoError('not_allowed');
+    const title = String(p.p_title ?? '').trim(), body = String(p.p_body ?? '').trim();
+    if (!title || title.length > 60 || !body || body.length > 180) throw new DemoError('invalid_message');
+    const list = (state.pushCampaigns ??= []);
+    if (list[0] && Date.parse(list[0].created_at) > Date.now() - 10 * 60_000) throw new DemoError('campaign_too_soon');
+    const recipients = (rpcs.admin_push_audience({ p_branch: p.p_branch }) as { reachable: number }).reachable;
+    list.unshift({ id: Date.now(), title, body, branch_id: (p.p_branch as string) ?? null, recipients, created_at: nowIso() });
+    save();
+    return { campaign_id: list[0].id, recipients };
+  },
+});
+
 const functions: Record<string, (body: Row) => unknown> = {
   'iyzico-checkout'(body) {
     const me = requireUser();
@@ -735,7 +1045,8 @@ export function createDemoClient() {
 /** Puts the demo back to its starting data (sample customer, barista and orders). */
 export async function resetDemo() {
   await ready;
-  state = seed();
+  state = seedWithHistory();
+  applyEdits();
   await AsyncStorage.setItem(STORE_KEY, JSON.stringify(state)).catch(() => undefined);
   listeners.forEach((l) => l('SIGNED_OUT', null));
 }

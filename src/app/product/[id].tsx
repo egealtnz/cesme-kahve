@@ -2,14 +2,17 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ShoppingBag, X } from 'lucide-react-native';
+import { Heart, ShoppingBag, X } from 'lucide-react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { Txt } from '@/components/Txt';
 import { Button } from '@/components/Button';
 import { Badge } from '@/components/Badge';
 import { Stepper } from '@/components/Stepper';
 import { OptionRow } from '@/components/Controls';
 import { ProductPhoto } from '@/components/Product';
-import { useCatalogue, useSoldOut } from '@/lib/api';
+import { addFavorite, removeFavorite, useCatalogue, useFavorites, useSoldOut } from '@/lib/api';
+import { errorMessage } from '@/lib/errors';
+import { useAuth } from '@/state/auth';
 import { tl } from '@/lib/format';
 import { useCart } from '@/state/cart';
 import { useToast } from '@/state/toast';
@@ -26,6 +29,9 @@ export default function ProductSheet() {
   const defaultMilk = cat?.milks.find((m) => m.is_default)?.id ?? null;
   const [milkId, setMilkId] = useState<string | null>(product?.has_milk_options ? defaultMilk : null);
   const [qty, setQty] = useState(1);
+  const { userId } = useAuth();
+  const favorites = useFavorites(userId);
+  const qc = useQueryClient();
 
   if (!cat || !product) return <View style={styles.sheet} />;
   const category = cat.categories.find((c) => c.id === product.category_id);
@@ -34,11 +40,26 @@ export default function ProductSheet() {
   const total = (product.price + (milk?.extra_price ?? 0)) * qty;
 
   const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
+  const fav = favorites.data?.find((f) => f.product_id === product.id && (f.milk_id ?? null) === (milkId ?? null));
+  const toggleFav = async () => {
+    if (!userId) { router.push({ pathname: '/auth/sign-in', params: { next: `/product/${product.id}` } }); return; }
+    try {
+      if (fav) await removeFavorite(fav.id); else await addFavorite(product.id, milkId);
+      await qc.invalidateQueries({ queryKey: ['favorites', userId] });
+      toast(fav ? 'Favorilerden çıkarıldı' : `${product.name}${milk ? ` (${milk.label})` : ''} favorilerine eklendi`);
+    } catch (e) {
+      toast(errorMessage(e));
+    }
+  };
 
   return (
     <View style={styles.sheet}>
       <ScrollView contentContainerStyle={{ padding: space[4], paddingBottom: space[6] }}>
         <View style={styles.header}>
+          <Pressable accessibilityRole="button" accessibilityState={{ selected: !!fav }}
+            accessibilityLabel={fav ? 'Favorilerden çıkar' : 'Favorilere ekle'} onPress={toggleFav} style={styles.close}>
+            <Heart size={22} color={fav ? color.error : color.ink} fill={fav ? color.error : 'transparent'} strokeWidth={1.75} />
+          </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="Kapat" onPress={close} style={styles.close}>
             <X size={24} color={color.ink} strokeWidth={1.75} />
           </Pressable>
@@ -100,7 +121,7 @@ export default function ProductSheet() {
 
 const styles = StyleSheet.create({
   sheet: { flex: 1, backgroundColor: color.surface },
-  header: { alignItems: 'flex-end', marginBottom: space[1] },
+  header: { flexDirection: 'row', justifyContent: 'flex-end', gap: space[2], marginBottom: space[1] },
   close: { width: 44, height: 44, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: color.surfaceMuted },
   photoWell: { height: 208, borderRadius: radius.sm, backgroundColor: color.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space[4], marginTop: 4 },

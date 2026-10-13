@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { Bell, Check, Clock, CreditCard, Gift, Leaf, MapPin, Percent, Recycle, XCircle } from 'lucide-react-native';
+import { Bell, CalendarClock, Check, Clock, CreditCard, Gift, Leaf, MapPin, Percent, Recycle, RotateCcw, XCircle } from 'lucide-react-native';
 import { Txt } from '@/components/Txt';
 import { Button } from '@/components/Button';
 import { Card, Divider, Screen, TopBar } from '@/components/Layout';
 import { checkPayment, startCardPayment, openPaymentPage, useCancelOrder, useOrder } from '@/lib/api';
+import { pickupLabel } from '@/lib/hours';
+import { useReorder } from '@/lib/reorder';
+import { canRate, RatingCard } from '@/components/RatingCard';
 import { errorMessage } from '@/lib/errors';
 import { tl, timeOf } from '@/lib/format';
 import { notificationsAllowed, registerForOrderNotifications } from '@/lib/notifications';
@@ -31,7 +34,9 @@ function headline(o: Order, outcome?: string): { title: string; body: string } {
         ? { title: 'Ödemen kontrol ediliyor', body: 'Bankan ödemeyi onaylayınca siparişin şubeye iletilecek.' }
         : { title: 'Ödeme tamamlanmadı', body: 'Kartla ödemeyi tamamla ya da siparişi iptal et. Ödenmeyen siparişler 30 dakika sonra iptal edilir.' };
     case 'placed':
-      return { title: 'Siparişin alındı', body: `${branch} şubesi siparişini sıraya aldı. Yaklaşık ${o.branch?.prep_minutes ?? 6} dakikada hazır olacak.` };
+      return o.pickup_at
+        ? { title: 'Siparişin alındı', body: `${branch} şubesi siparişini ${pickupLabel(o.pickup_at).toLocaleLowerCase('tr-TR')} için hazırlayacak.` }
+        : { title: 'Siparişin alındı', body: `${branch} şubesi siparişini sıraya aldı. Yaklaşık ${o.branch?.prep_minutes ?? 6} dakikada hazır olacak.` };
     case 'preparing':
       return { title: 'Hazırlanıyor', body: 'Baristamız siparişini hazırlıyor.' };
     case 'ready':
@@ -58,6 +63,7 @@ export default function OrderScreen() {
   const toast = useToast();
   const qc = useQueryClient();
   const [paying, setPaying] = useState(false);
+  const reorder = useReorder();
   const [askPush, setAskPush] = useState(false);
 
   useEffect(() => {
@@ -175,6 +181,15 @@ export default function OrderScreen() {
             <Txt variant="caption" color="inkMuted">{order.branch?.district} · {order.branch?.city}</Txt>
           </View>
         </View>
+        {order.pickup_at ? (
+          <View style={{ flexDirection: 'row', gap: space[3], alignItems: 'center' }}>
+            <CalendarClock size={20} color={color.ink} strokeWidth={1.75} />
+            <View style={{ flex: 1 }}>
+              <Txt variant="caption" color="inkMuted">Teslim alma zamanı</Txt>
+              <Txt variant="body" style={{ fontFamily: 'DMSans-SemiBold' }}>{pickupLabel(order.pickup_at)}</Txt>
+            </View>
+          </View>
+        ) : null}
         <Divider />
         {order.order_items?.map((i) => (
           <View key={i.id} style={{ flexDirection: 'row', gap: space[2] }}>
@@ -213,6 +228,12 @@ export default function OrderScreen() {
           </Txt>
         ) : null}
       </Card>
+
+      {canRate(order) ? <View style={{ marginTop: space[4] }}><RatingCard order={order} /></View> : null}
+
+      {order.status === 'collected' || order.status === 'cancelled' ? (
+        <Button label="Tekrar sipariş ver" variant="secondary" icon={RotateCcw} style={{ marginTop: space[4] }} onPress={() => reorder(order)} />
+      ) : null}
 
       {canCancel ? (
         <Button

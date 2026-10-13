@@ -5,13 +5,15 @@ import { Redirect, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { useQueryClient } from '@tanstack/react-query';
-import { BellOff, Check, ChefHat, ChevronRight, Leaf, ListChecks, PackageCheck, Recycle, ScanLine, UserRound, Users, X } from 'lucide-react-native';
+import { BellOff, Briefcase, CalendarClock, Check, ChefHat, ChevronRight, Leaf, ListChecks, Monitor, PackageCheck, Recycle, ScanLine, UserRound, Users, X } from 'lucide-react-native';
 import { Txt } from '@/components/Txt';
 import { Button } from '@/components/Button';
 import { Badge } from '@/components/Badge';
 import { Card, TopBar } from '@/components/Layout';
 import { StaffHistory } from '@/components/StaffHistory';
-import { canManageBranch, handlers, staffSetStatus, useBranchQueue, useCatalogue } from '@/lib/api';
+import { canManageBranch, handlers, staffSetStatus, useBranchesLive, useBranchQueue, useCatalogue } from '@/lib/api';
+import { isDueSoon, pickupLabel } from '@/lib/hours';
+import { BranchLoad } from '@/components/BranchLoad';
 import { errorMessage } from '@/lib/errors';
 import { registerForStaffNotifications } from '@/lib/notifications';
 import { timeOf, tl } from '@/lib/format';
@@ -27,10 +29,11 @@ const NEXT: Partial<Record<OrderStatus, { status: OrderStatus; label: string; ic
   preparing: { status: 'ready', label: 'Hazır', icon: Check },
   ready: { status: 'collected', label: 'Teslim edildi', icon: PackageCheck },
 };
-const COLUMNS: { status: OrderStatus; title: string }[] = [
-  { status: 'placed', title: 'Yeni' },
-  { status: 'preparing', title: 'Hazırlanıyor' },
-  { status: 'ready', title: 'Hazır' },
+const COLUMNS: { key: string; status: OrderStatus; title: string; later?: boolean }[] = [
+  { key: 'new', status: 'placed', title: 'Yeni' },
+  { key: 'preparing', status: 'preparing', title: 'Hazırlanıyor' },
+  { key: 'ready', status: 'ready', title: 'Hazır' },
+  { key: 'later', status: 'placed', title: 'Planlı (ileri saat)', later: true },
 ];
 
 export default function StaffScreen() {
@@ -48,6 +51,7 @@ export default function StaffScreen() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [view, setView] = useState<'queue' | 'history'>('queue');
   const queue = useBranchQueue(branchId);
+  const live = useBranchesLive();
   const lastNew = useRef<number | null>(null);
   const [push, setPush] = useState<'granted' | 'denied' | 'unavailable' | null>(null);
 
@@ -70,7 +74,8 @@ export default function StaffScreen() {
   }, [branchOptions]);
 
   // New order arrived: buzz the barista's phone.
-  const newCount = queue.data?.filter((o) => o.status === 'placed').length ?? 0;
+  const prep = live.data?.find((b) => b.id === branchId)?.prep_minutes ?? 6;
+  const newCount = queue.data?.filter((o) => o.status === 'placed' && isDueSoon(o.pickup_at, prep)).length ?? 0;
   useEffect(() => {
     if (lastNew.current !== null && newCount > lastNew.current) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
@@ -81,6 +86,7 @@ export default function StaffScreen() {
 
   if (!isStaff) return <Redirect href="/profile" />;
   const branch = cat?.branches.find((b) => b.id === branchId);
+  const liveBranch = live.data?.find((b) => b.id === branchId);
 
   const advance = async (o: Order, status: OrderStatus) => {
     setBusyId(o.id);
@@ -136,6 +142,17 @@ export default function StaffScreen() {
             onPress={() => branchId && router.push({ pathname: '/staff/menu', params: { branch: branchId } })} />
         </View>
 
+        {liveBranch ? <BranchLoad branch={liveBranch} /> : null}
+
+        <View style={{ gap: space[2], marginTop: space[3] }}>
+          <LinkRow icon={Monitor} title="Tezgah ekranı" body="Tablet için büyük ekran, yeni siparişte sesli uyarı"
+            onPress={() => branchId && router.push({ pathname: '/staff/board', params: { branch: branchId } })} />
+          {isAdmin ? (
+            <LinkRow icon={Briefcase} title="İşletme yönetimi" body="Menü, fiyatlar, şubeler, rapor ve bildirimler"
+              onPress={() => router.push('/admin')} />
+          ) : null}
+        </View>
+
         {branchId && canManageBranch(staff, branchId) ? (
           <Pressable accessibilityRole="button" accessibilityLabel="Ekip: barista ekle ya da çıkar"
             onPress={() => router.push({ pathname: '/staff/team', params: { branch: branchId } })}
@@ -161,9 +178,12 @@ export default function StaffScreen() {
         {view === 'history' ? <StaffHistory branchId={branchId} /> : null}
         {view === 'queue' && queue.isLoading ? <ActivityIndicator color={color.ink} style={{ marginTop: space[8] }} /> : null}
         {view === 'queue' && COLUMNS.map((col) => {
-          const orders = queue.data?.filter((o) => o.status === col.status) ?? [];
+          const orders = queue.data?.filter((o) => o.status === col.status
+            && (col.status !== 'placed' || (col.later ? !isDueSoon(o.pickup_at, prep) : isDueSoon(o.pickup_at, prep))))
+            .sort((a, b) => (col.later ? Date.parse(a.pickup_at!) - Date.parse(b.pickup_at!) : 0)) ?? [];
+          if (col.later && orders.length === 0) return null;
           return (
-            <View key={col.status} style={{ marginTop: space[6] }}>
+            <View key={col.key} style={{ marginTop: space[6] }}>
               <View style={styles.colHead}>
                 <Txt variant="h4" accessibilityRole="header">{col.title}</Txt>
                 <View style={styles.count}><Txt variant="label">{orders.length}</Txt></View>
@@ -182,6 +202,12 @@ export default function StaffScreen() {
                         <Txt variant="caption" color="inkMuted">{timeOf(o.created_at)}</Txt>
                       </View>
                     </View>
+                    {o.pickup_at ? (
+                      <View style={styles.pickup}>
+                        <CalendarClock size={16} color={color.warning} strokeWidth={1.75} />
+                        <Txt variant="label" color="warning">{`Teslim: ${pickupLabel(o.pickup_at)}`}</Txt>
+                      </View>
+                    ) : null}
                     <HandledBy order={o} />
                     <View style={{ gap: 4, marginTop: space[2] }}>
                       {o.order_items?.map((i) => (
@@ -228,6 +254,20 @@ export default function StaffScreen() {
   );
 }
 
+function LinkRow({ icon: Icon, title, body, onPress }: { icon: typeof Users; title: string; body: string; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={`${title}: ${body}`} onPress={onPress}
+      style={({ pressed }) => [styles.teamRow, { marginTop: 0 }, pressed && { backgroundColor: color.surfaceMuted }]}>
+      <View style={styles.teamIcon}><Icon size={20} color={color.secondaryInk} strokeWidth={1.75} /></View>
+      <View style={{ flex: 1 }}>
+        <Txt variant="label">{title}</Txt>
+        <Txt variant="bodySm" color="inkMuted">{body}</Txt>
+      </View>
+      <ChevronRight size={20} color={color.inkMuted} strokeWidth={1.75} />
+    </Pressable>
+  );
+}
+
 /** In the queue: who picked the order up ("Ece K. hazırlıyor") and who marked it ready. */
 function HandledBy({ order }: { order: Order }) {
   const h = handlers(order);
@@ -247,6 +287,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.background },
   chip: { height: 36, paddingHorizontal: space[4], borderRadius: radius.full, backgroundColor: color.surfaceMuted, justifyContent: 'center' },
   tools: { flexDirection: 'row', gap: space[3], marginTop: space[4] },
+  pickup: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: space[1] },
   teamRow: {
     flexDirection: 'row', alignItems: 'center', gap: space[3], marginTop: space[3], padding: space[3],
     borderRadius: radius.md, backgroundColor: color.surface, boxShadow: '0px 1px 3px rgba(0, 40, 62, 0.10)',

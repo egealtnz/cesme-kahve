@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { ArrowRight, ChevronRight, Clock, Coffee, Gift, MapPin, Percent, Recycle, ShoppingBag } from 'lucide-react-native';
+import { ArrowRight, ChevronRight, Clock, Coffee, Gift, Leaf, MapPin, Percent, Recycle, ShoppingBag, Sparkles } from 'lucide-react-native';
 import { Txt } from '@/components/Txt';
 import { Button } from '@/components/Button';
 import { ProductCard, ProductPhoto } from '@/components/Product';
 import { Logo, SectionTitle } from '@/components/Layout';
-import { useCatalogue, useRewards, useSoldOut } from '@/lib/api';
+import { useBranchesLive, useCatalogue, useRewards, useSoldOut } from '@/lib/api';
+import { branchState } from '@/lib/hours';
+import { ForYou } from '@/components/ForYou';
 import { greeting, tl } from '@/lib/format';
 import { errorMessage } from '@/lib/errors';
 import { priceCart } from '@/lib/pricing';
@@ -24,7 +26,8 @@ export default function HomeScreen() {
   const rewards = useRewards(userId);
   const cart = useCart();
   const toast = useToast();
-  const branch = cat?.branches.find((b) => b.id === cart.branchId) ?? null;
+  const live = useBranchesLive();
+  const branch = (live.data ?? cat?.branches)?.find((b) => b.id === cart.branchId) ?? null;
 
   // Signed-in customers start from their favourite branch.
   useEffect(() => {
@@ -110,7 +113,10 @@ export default function HomeScreen() {
               <View style={styles.inline}>
                 <Clock size={16} color={color.inkMuted} strokeWidth={1.75} />
                 <Txt variant="bodySm" color="inkMuted">
-                  {branch ? `${branch.district} · yaklaşık ${branch.prep_minutes} dakikada hazır` : 'Teslim alacağın şubeyi ödemeden önce seçeceksin.'}
+                  {branch ? `${branch.district} · ${(() => {
+                    const st = branchState(branch);
+                    return st.orderNow ? `${st.kind === 'busy' ? 'şu an yoğun, ' : ''}yaklaşık ${st.waitMinutes} dakikada hazır` : `${st.label} · ileri saate sipariş verebilirsin`;
+                  })()}` : 'Teslim alacağın şubeyi ödemeden önce seçeceksin.'}
                 </Txt>
               </View>
             </View>
@@ -125,6 +131,7 @@ export default function HomeScreen() {
               </Pressable>
             ) : null}
           </View>
+          {userId ? <ForYou userId={userId} soldOut={soldOut.data} /> : null}
 
           {cat.campaigns.length > 0 ? (
             <View style={{ marginTop: space[8] }}>
@@ -251,9 +258,11 @@ function CampaignCard({ c, product }: { c: Campaign; product?: Product }) {
         {c.tone === 'primary' ? (
           <View style={styles.wheel}><View style={styles.wheelInner}><Percent size={26} color={color.secondary} strokeWidth={1.75} /></View></View>
         ) : c.tone === 'eco' ? (
-          <Recycle size={76} color={color.success} strokeWidth={1.25} />
-        ) : c.tone === 'copper' && product ? (
-          <ProductPhoto product={product} size={80} />
+          c.id === 'own-cup' ? <Recycle size={76} color={color.success} strokeWidth={1.25} /> : <Leaf size={72} color={color.success} strokeWidth={1.25} />
+        ) : c.tone === 'copper' ? (
+          c.id === 'fresh' && product ? <ProductPhoto product={product} size={80} /> : <Coffee size={72} color={color.secondary} strokeWidth={1.25} />
+        ) : c.id !== 'loyalty' ? (
+          <Sparkles size={64} color={color.secondary} strokeWidth={1.25} />
         ) : (
           <View style={styles.stampGrid}>
             {Array.from({ length: 9 }, (_, i) => (

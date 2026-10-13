@@ -24,6 +24,18 @@ async function ensureChannels() {
     importance: Notifications.AndroidImportance.HIGH,
     lightColor: '#CA812A',
   });
+  await Notifications.setNotificationChannelAsync('rewards', {
+    name: 'Hediye kahveler',
+    description: 'Doğum günü kahven gibi hesabına eklenen hediyeler.',
+    importance: Notifications.AndroidImportance.DEFAULT,
+    lightColor: '#CA812A',
+  });
+  await Notifications.setNotificationChannelAsync('offers', {
+    name: 'Kampanyalar',
+    description: 'İzin verdiysen kampanya ve fırsat duyuruları.',
+    importance: Notifications.AndroidImportance.DEFAULT,
+    lightColor: '#CA812A',
+  });
 }
 
 async function ensureStaffChannel() {
@@ -113,6 +125,8 @@ export function useNotificationRouting() {
     const open = (n: Notifications.Notification | undefined) => {
       const data = n?.request.content.data;
       if (data?.screen === 'staff') router.navigate('/staff');
+      else if (data?.screen === 'loyalty') router.push('/loyalty');
+      else if (data?.screen === 'home') router.navigate('/');
       else if (typeof data?.orderId === 'string') router.push(`/order/${data.orderId}`);
     };
     Notifications.getLastNotificationResponseAsync().then((r) => open(r?.notification)).catch(() => undefined);

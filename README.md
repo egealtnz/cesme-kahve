@@ -79,7 +79,7 @@ Yerelde gönderilen doğrulama e-postaları `http://127.0.0.1:54324` (Inbucket) 
 ```bash
 npm run typecheck        # TypeScript
 npm run lint             # ESLint (expo lint)
-npm run test:backend     # 26 uçtan uca test: RLS, fiyat, damga/hediye, personel ve ekip yetkileri, ödeme, iade, şube bildirimi, hesap silme
+npm run test:backend     # 28 uçtan uca test: RLS, fiyat, damga/hediye, personel ve ekip yetkileri, ödeme, iade, şube bildirimi, yönetici araçları, çalışma saatleri, ileri saat, favori, değerlendirme, rapor, doğum günü, bildirim, hesap silme
 ```
 
 `test:backend` yalnızca **yerel veya staging** projede çalıştırılmalı; test kullanıcıları oluşturup siler:
@@ -97,6 +97,9 @@ Uygulama, sunucu ve hesap olmadan da çalışabilir: `EXPO_PUBLIC_DEMO=1` ile de
 | Müşteri (7 damga, 1 hediye kahve) | `demo@cesmekahve.com` | `demo1234` |
 | Barista (Alaçatı şubesi) | `barista@cesmekahve.com` | `demo1234` |
 | Şube müdürü (Alaçatı, ekibi yönetir) | `mudur@cesmekahve.com` | `demo1234` |
+| İşletme sahibi (tüm şubeler, rapor, menü, bildirim) | `yonetici@cesmekahve.com` | `demo1234` |
+
+Önizlemede son 30 güne ait örnek siparişler, yorumlar ve bir favori içecek hazır gelir; satış raporu bu verilerle dolu görünür.
 
 Yeni üyelikte e-posta doğrulama kodu her zaman `123456`. Kasada okutma ekranında örnek kodlar: kahve kartı `A3VTLQBSR6`, hediye kahve `K7M2QX`. Profil sayfasının en altındaki **Önizlemeyi sıfırla** her şeyi başa döndürür.
 
@@ -107,21 +110,34 @@ EXPO_PUBLIC_DEMO=1 npx expo start             # telefonda Expo Go ile demo (sunu
 
 Tek dosyalık önizleme internetsiz çalışır; çift tıklayıp tarayıcıda açmak yeterli. Gerçek derlemelerde demo arka ucu pakete girmez (`metro.config.js` onu boş bir taslakla değiştirir).
 
-## Yönetim (admin paneli yerine Supabase Dashboard)
+## İşletme yönetimi (uygulama içinde)
 
-İlk sürümde ayrı bir yönetim paneli yok; menü ve şubeler Supabase Dashboard → **Table Editor** üzerinden düzenlenir. Değişiklikler uygulamaya en geç 5 dakika içinde yansır.
+Yönetici (`admin`) hesabıyla **Profil → İşletme yönetimi** (ya da Şube ekranındaki bağlantı) şunları açar:
 
-| Ne | Tablo | Not |
-|---|---|---|
-| Fiyat değişikliği | `products.price` | **Kuruş** cinsinden: ₺135 = `13500` |
-| Ürünü menüden kaldır | `products.is_active = false` | Geçmiş siparişler etkilenmez |
-| Yeni ürün | `products` | Fotoğrafı Storage → `menu` kovasına yükleyin, `image_path = 'menu/<dosya>.webp'` (mevcut ürünlerin fotoğrafları uygulamanın içinde gelir) |
-| Süt seçenekleri | `milk_options` | `is_default` en fazla bir satırda |
-| Şube aç/kapat | `branches.status`, `accepts_orders` | `status`: `open` / `coming_soon` / `closed`; `accepts_orders = false` sipariş almayı geçici durdurur |
-| Hazırlık süresi | `branches.prep_minutes` | Müşteriye gösterilen tahmini süre |
-| Kampanya kartları | `campaigns` | Ana sayfadaki kartlar (görsel amaçlı) |
-| Kurallar | `app_settings` | damga sayısı, hediye süresi, indirimler, ödeme süresi |
-| Kartla ödeme aç/kapat | `app_settings.card_payments_enabled` | iyzico anahtarları girilene kadar `false` bırakın; kapalıyken uygulamada yalnızca "Şubede öde" görünür |
+| Ekran | Ne yapılır |
+|---|---|
+| **Satışlar** | Bugün / 7 / 30 / 90 gün, tüm şubeler ya da tek şube: ciro, sipariş, ortalama sepet, kahve sayısı, müşteri, memnuniyet; şube sıralaması, en çok satanlar, yoğun saatler, müşteri yorumları. **Excel'e aktar (CSV)** muhasebe için sipariş listesini paylaşır/indirir. |
+| **Menü ve fiyatlar** | Ürün ekle, fiyat/ad/açıklama/kategori değiştir, fotoğraf yükle (telefonun galerisinden), menüde göster/gizle. |
+| **Şubeler ve çalışma saatleri** | Açık / yakında / kapalı, uygulamadan sipariş alma, hazırlık süresi, haftanın her günü için açılış-kapanış (gece yarısını geçebilir), ekip. |
+| **Kampanya kartları** | Ana sayfadaki kartları ekle, düzenle, gizle, sil (renk önizlemeli). |
+| **Bildirim gönder** | Kampanya iletisine izin veren ve bildirimleri açık müşterilere (hepsine ya da bir şubenin müdavimlerine) duyuru. İki gönderim arasında en az 10 dakika. |
+| **Ayarlar** | Kaç kahvede bir hediye, ikinci kahve indirimi (%20/30/50), kendi bardağın indirimi, doğum günü kahvesi, “Seni özledik” bildirimi. |
+
+Değişiklikler müşterilere birkaç dakika içinde yansır. Supabase Dashboard → Table Editor hâlâ kullanılabilir (aynı tablolar: `products`, `branches`, `campaigns`, `app_settings`); fiyatlar **kuruş** cinsindendir (₺135 = `13500`). Kartla ödeme anahtarı (`app_settings.card_payments_enabled`) bilerek uygulamada yok: iyzico anahtarları girilmeden açılmamalı.
+
+### Şube ekranındaki yeni araçlar
+
+- **Yoğunluk:** “+10 dk / +20 dk” müşterilere gösterilen bekleme süresini 2 saatliğine uzatır; “30 dk durdur” uygulama siparişlerini kısa süreliğine kapatır (o süreden sonraki ileri saat siparişleri yine gelir). Her barista kullanabilir.
+- **Tezgah ekranı:** tablet için büyük yazılı sipariş panosu; ekran açık kalır, her yeni siparişte zil çalar ve bekleyen sipariş varken 45 saniyede bir hatırlatır. Tablet genişliğinde üç sütun yan yana.
+- **İleri saat siparişleri:** “Planlı” bölümünde saatine göre sıralanır; hazırlama zamanı gelince (teslim saatinden hazırlık süresi + 10 dk önce) “Yeni”ye geçer ve baristalara bildirim gider.
+- **Kim yaptı / müşteri ne dedi:** Geçmiş'te her siparişi kimin kabul ettiği, hazırladığı, teslim ettiği ve müşterinin 👍/👎 yorumu görünür.
+
+### Müşteri tarafında
+
+- **Daha sonra alacağım:** ödeme ekranında bugün ya da yarın için 15 dakikalık aralıklarla saat seçilir; şube kapalı ya da duraklatılmışken yalnızca bu seçenek açıktır.
+- **Her zamankinden / Favorilerin:** ana sayfada son siparişi tek dokunuşla tekrarlama ve ürün sayfasında ❤️ ile kaydedilen favoriler.
+- **Nasıldı?:** teslimden sonraki 7 gün içinde 👍/👎 ve isteğe bağlı yorum (şube ve yönetici görür).
+- **Doğum günü kahvesi:** doğum gününü yazan müşteriye o sabah 06:05'te hediye kahve ve bildirim (yılda bir; Ayarlar'dan kapatılabilir).
 
 Tek bir şubede ürün bittiğinde baristalar uygulamadaki **Şube → Tükenenler** ekranını kullanır.
 
@@ -172,7 +188,6 @@ Bu fonksiyon siparişi iptal eder ve "iade edildi" olarak işaretler, siparişte
 
 ## Bilinen sınırlamalar (v1.0)
 
-- Ayrı yönetim paneli yok (Supabase Dashboard kullanılıyor).
 - İade iyzico panelinden elle yapılıyor.
 - Kampanya kartları bilgilendirme amaçlı; otomatik uygulanan kampanya yalnızca "ikinci kahve %50" ("kendi bardağın" indirimi kapalı).
 - Uygulama yalnızca Türkçe.

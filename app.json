@@ -3,7 +3,7 @@
     "name": "Çeşme Kahve",
     "slug": "cesme-kahve",
     "scheme": "cesmekahve",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/brand/icon.png",
     "userInterfaceStyle": "light",
@@ -166,7 +166,23 @@
           "color": "#00283E",
           "defaultChannel": "orders"
         }
-      ]
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Yöneticiler menüye ürün fotoğrafı eklemek için fotoğraflarını seçebilir.",
+          "cameraPermission": "Şube personeli, kahve kartı ve hediye kahve QR kodlarını okutmak için kamerayı kullanır.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true

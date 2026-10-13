@@ -1,7 +1,7 @@
 // Branch order history for the staff screen: finished orders (collected or cancelled) with a short summary.
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
-import { UserRound } from 'lucide-react-native';
+import { ThumbsDown, ThumbsUp, UserRound } from 'lucide-react-native';
 import { Txt } from './Txt';
 import { Badge } from './Badge';
 import { Card } from './Layout';
@@ -118,6 +118,16 @@ export function StaffHistory({ branchId }: { branchId: string | null }) {
                   </Txt>
                 </View>
                 <Handlers order={o} />
+                {o.order_ratings ? (
+                  <View style={styles.handlers}>
+                    {o.order_ratings.liked
+                      ? <ThumbsUp size={14} color={color.success} strokeWidth={1.75} style={{ marginTop: 1 }} />
+                      : <ThumbsDown size={14} color={color.error} strokeWidth={1.75} style={{ marginTop: 1 }} />}
+                    <Txt variant="caption" color={o.order_ratings.liked ? 'success' : 'error'} style={{ flex: 1 }}>
+                      {o.order_ratings.liked ? 'Müşteri beğendi' : 'Müşteri beğenmedi'}{o.order_ratings.comment ? `: “${o.order_ratings.comment}”` : ''}
+                    </Txt>
+                  </View>
+                ) : null}
               </View>
             ))}
           </Card>

@@ -7,7 +7,9 @@ import { Txt } from '@/components/Txt';
 import { Button } from '@/components/Button';
 import { OptionRow } from '@/components/Controls';
 import { Card, Divider, Screen, TopBar } from '@/components/Layout';
-import { checkPayment, placeOrder, startCardPayment, openPaymentPage, useCatalogue, useRewards } from '@/lib/api';
+import { checkPayment, placeOrder, startCardPayment, openPaymentPage, useBranchesLive, useCatalogue, useRewards } from '@/lib/api';
+import { branchState, pickupLabel, pickupSlots } from '@/lib/hours';
+import { PickupPicker } from '@/components/PickupPicker';
 import { errorCode, errorMessage } from '@/lib/errors';
 import { tl } from '@/lib/format';
 import { priceCart } from '@/lib/pricing';
@@ -29,7 +31,9 @@ export default function CheckoutConfirm() {
   const [busy, setBusy] = useState<null | 'placing' | 'paying' | 'checking'>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const branch = cat?.branches.find((b) => b.id === cart.branchId);
+  const live = useBranchesLive();
+  const branch = (live.data ?? cat?.branches)?.find((b) => b.id === cart.branchId);
+  const [pickupAt, setPickupAt] = useState<string | null>(null);
   const rewardCount = rewards.data?.length ?? 0;
   const totals = useMemo(() => {
     if (!cat) return null;
@@ -45,10 +49,16 @@ export default function CheckoutConfirm() {
   if (!branch) return <Redirect href="/checkout/branch" />;
   if (!totals || !cat) return <Screen><TopBar back /></Screen>;
 
+  const st = branchState(branch);
+  if (!st.orderable) return <Redirect href="/checkout/branch" />;
+  // Branch closed or paused right now: an order for later is the only option (first free time preselected).
+  const pickup = pickupAt ?? (st.orderNow ? null : pickupSlots(branch)[0]?.at.toISOString() ?? null);
+  const needsTime = !st.orderNow && !pickup;
   const free = totals.total === 0;
   const effective: PaymentMethod = free || !cardsOn ? 'store' : method;
 
   const submit = async () => {
+    if (needsTime) { setError('Teslim alma saatini seç.'); return; }
     setError(null);
     setBusy('placing');
     try {
@@ -59,6 +69,7 @@ export default function CheckoutConfirm() {
         useRewards: Math.min(cart.useRewards, totals.coffees, rewardCount),
         eco: cart.eco,
         ownCup: cart.ownCup && (cat?.settings.own_cup_discount ?? 0) > 0,
+        pickupAt: pickup,
       });
       qc.invalidateQueries({ queryKey: ['rewards'] });
 
@@ -81,6 +92,10 @@ export default function CheckoutConfirm() {
       const code = errorCode(e);
       if (code === 'product_sold_out') qc.invalidateQueries({ queryKey: ['sold-out', branch.id] });
       if (code === 'product_unavailable') qc.invalidateQueries({ queryKey: ['catalogue'] });
+      if (['branch_paused', 'branch_closed_now', 'pickup_outside_hours', 'pickup_too_soon'].includes(code)) {
+        qc.invalidateQueries({ queryKey: ['branches-live'] });
+        setPickupAt(null);
+      }
       setError(errorMessage(e));
     } finally {
       setBusy(null);
@@ -118,10 +133,13 @@ export default function CheckoutConfirm() {
         <View style={{ flex: 1 }}>
           <Txt variant="caption">Teslim alınacak şube</Txt>
           <Txt variant="body" style={{ fontFamily: 'DMSans-SemiBold' }}>{branch.name}</Txt>
-          <Txt variant="caption">Yaklaşık {branch.prep_minutes} dakikada hazır</Txt>
+          <Txt variant="caption">{pickup ? `Teslim alma: ${pickupLabel(pickup)}` : st.orderNow ? `Yaklaşık ${st.waitMinutes} dakikada hazır` : st.label}</Txt>
         </View>
         <Button label="Değiştir" variant="tertiary" size="sm" onPress={() => router.back()} />
       </Card>
+
+      <Txt variant="h6" accessibilityRole="header" style={{ marginTop: space[6], marginBottom: space[3] }}>Ne zaman alacaksın?</Txt>
+      <PickupPicker branch={branch} value={pickup} onChange={setPickupAt} />
 
       <Txt variant="h6" accessibilityRole="header" style={{ marginTop: space[6], marginBottom: space[3] }}>Siparişin</Txt>
       <Card style={{ gap: space[2] }}>

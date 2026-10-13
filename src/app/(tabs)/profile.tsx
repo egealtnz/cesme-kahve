@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
-import { Bell, ChevronRight, CircleHelp, FileText, Gift, LogIn, LogOut, MapPin, Receipt, Shield, Store, Trash2, UserPen, UserPlus } from 'lucide-react-native';
+import { Bell, Briefcase, ChevronRight, CircleHelp, FileText, Gift, LogIn, LogOut, MapPin, Receipt, Shield, Store, Trash2, UserPen, UserPlus } from 'lucide-react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { Txt } from '@/components/Txt';
 import { Button } from '@/components/Button';
@@ -16,6 +16,8 @@ import { tl, timeOf, shortDate } from '@/lib/format';
 import type { Order } from '@/lib/types';
 import { useAuth } from '@/state/auth';
 import { useCart } from '@/state/cart';
+import { useToast } from '@/state/toast';
+import { notificationsAllowed, registerForOrderNotifications } from '@/lib/notifications';
 import { color, radius, space } from '@/theme/tokens';
 
 const STATUS_LABEL: Record<Order['status'], string> = {
@@ -28,11 +30,13 @@ export default function ProfileScreen() {
     for (const key of [['profile'], ['rewards'], ['orders']]) qc.invalidateQueries({ queryKey: key });
   }, [qc]));
   const insets = useSafeAreaInsets();
-  const { session, userId, email, profile, isStaff, signOut } = useAuth();
+  const { session, userId, email, profile, isStaff, staff, signOut } = useAuth();
+  const isAdmin = staff.some((s) => s.role === 'admin');
   const { data: cat } = useCatalogue();
   const rewards = useRewards(userId);
   const orders = useMyOrders(userId);
   const cart = useCart();
+  const toast = useToast();
   const perReward = cat?.settings.stamps_per_reward ?? 10;
   const resetPreview = async () => {
     if (process.env.EXPO_PUBLIC_DEMO !== '1') return;
@@ -111,6 +115,9 @@ export default function ProfileScreen() {
             {isStaff ? (
               <Button label="Şube ekranını aç" icon={Store} variant="secondary" size="md" style={{ marginTop: space[4] }} onPress={() => router.navigate('/staff')} />
             ) : null}
+            {isAdmin ? (
+              <Button label="İşletme yönetimi" icon={Briefcase} variant="secondary" size="md" style={{ marginTop: space[2] }} onPress={() => router.push('/admin')} />
+            ) : null}
 
             <Txt variant="h4" accessibilityRole="header" style={styles.h}>Siparişlerim</Txt>
             {orders.data?.length ? (
@@ -149,7 +156,13 @@ export default function ProfileScreen() {
             <Card style={{ padding: 0 }}>
               <ListRow icon={UserPen} label="Hesap bilgileri" onPress={() => router.push('/account/edit')} />
               <ListRow icon={MapPin} label="Favori şube" value={favorite?.name ?? 'Seçilmedi'} onPress={() => router.push('/account/edit')} />
-              <ListRow icon={Bell} label="Bildirim ayarları" onPress={() => Linking.openSettings()} />
+              <ListRow icon={Bell} label="Bildirimler" onPress={async () => {
+                if (Platform.OS === 'web') return;
+                if (await notificationsAllowed()) { Linking.openSettings(); return; }
+                const r = userId ? await registerForOrderNotifications(userId) : 'unavailable';
+                if (r === 'granted') toast('Bildirimler açıldı. Siparişin hazır olunca haber vereceğiz.');
+                else Linking.openSettings();
+              }} />
               <ListRow icon={Gift} label="Kahve kartı" onPress={() => router.push('/loyalty')} last />
             </Card>
             {legal}

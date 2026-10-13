@@ -4,6 +4,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { callFunction, IS_DEMO, supabase } from './supabase';
 import type {
+  ExportRow, Favorite, OrderRating, PushCampaign, Report,
   Branch, BranchTeam, Campaign, Category, Milk, Order, OrderStatus, PaymentMethod, Product, Profile, Reward, Settings, StaffMembership,
 } from './types';
 
@@ -104,7 +105,7 @@ export function useStaffMemberships(userId: string | undefined) {
   });
 }
 
-const ORDER_SELECT = '*, order_items(*), branch:branches(name, district, city, prep_minutes)';
+const ORDER_SELECT = '*, order_items(*), order_ratings(liked, comment), branch:branches(name, district, city, prep_minutes)';
 
 export function useMyOrders(userId: string | undefined) {
   return useQuery({
@@ -156,16 +157,19 @@ export type PlaceOrderInput = {
   useRewards: number;
   eco: boolean;
   ownCup: boolean;
+  /** null = as soon as possible */
+  pickupAt?: string | null;
 };
 
 export async function placeOrder(input: PlaceOrderInput): Promise<Order> {
-  const { data, error } = await supabase.rpc('place_order', {
+  const { data, error } = await supabase.rpc('place_order_v2', {
     p_branch_id: input.branchId,
     p_items: input.items,
     p_payment_method: input.paymentMethod,
     p_use_rewards: input.useRewards,
     p_eco_packaging: input.eco,
     p_own_cup: input.ownCup,
+    p_pickup_at: input.pickupAt ?? null,
   });
   if (error) throw new Error(error.message);
   return data as Order;
@@ -206,7 +210,7 @@ export function useCancelOrder() {
 const QUEUE: OrderStatus[] = ['placed', 'preparing', 'ready'];
 
 /** Branch screens also load who handled each order (visible to that branch's staff only). */
-const STAFF_ORDER_SELECT = '*, order_items(*), order_events(status, actor_name, created_at)';
+const STAFF_ORDER_SELECT = '*, order_items(*), order_events(status, actor_name, created_at), order_ratings(liked, comment)';
 
 /** Who did what on an order, latest action per status: { preparing: 'Ece K.', ready: 'Ece K.', ... }. */
 export function handlers(o: Order): Partial<Record<OrderStatus, { name: string; at: string }>> {
@@ -315,4 +319,148 @@ export async function updateProfile(userId: string, patch: Partial<Pick<Profile,
 export async function deleteMyAccount() {
   await callFunction<{ ok: true }>('delete-account', {});
   await supabase.auth.signOut({ scope: 'local' });
+}
+
+// ---------------------------------------------------------------- branch status (opening hours, busy, paused)
+/** Branch rows refreshed often, for busy mode and pauses (the catalogue itself is cached longer). */
+export function useBranchesLive() {
+  return useQuery({
+    queryKey: ['branches-live'],
+    staleTime: 20_000,
+    refetchInterval: 60_000,
+    queryFn: async () => (await must(supabase.from('branches').select('*').order('sort'))) as Branch[],
+  });
+}
+
+export async function staffSetBusy(branchId: string, extraMinutes: number) {
+  const { error } = await supabase.rpc('staff_set_busy', { p_branch: branchId, p_extra_minutes: extraMinutes });
+  if (error) throw new Error(error.message);
+}
+
+export async function staffPauseOrders(branchId: string, minutes: number) {
+  const { error } = await supabase.rpc('staff_pause_orders', { p_branch: branchId, p_minutes: minutes });
+  if (error) throw new Error(error.message);
+}
+
+// ---------------------------------------------------------------- favourites and ratings
+export function useFavorites(userId: string | undefined) {
+  return useQuery({
+    queryKey: ['favorites', userId],
+    enabled: !!userId,
+    queryFn: async () => (await must(supabase.from('favorites').select('*').order('created_at', { ascending: false }))) as Favorite[],
+  });
+}
+
+export async function addFavorite(productId: string, milkId: string | null) {
+  const { error } = await supabase.from('favorites').insert({ product_id: productId, milk_id: milkId });
+  if (error && !/duplicate|unique/i.test(error.message)) throw new Error(error.message);
+}
+
+export async function removeFavorite(id: number) {
+  const { error } = await supabase.from('favorites').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+export async function rateOrder(orderId: string, liked: boolean, comment: string | null): Promise<OrderRating> {
+  const { data, error } = await supabase.rpc('rate_order', { p_order: orderId, p_liked: liked, p_comment: comment });
+  if (error) throw new Error(error.message);
+  return data as OrderRating;
+}
+
+// ---------------------------------------------------------------- owner (admin)
+export function useAdminCatalogue(enabled: boolean) {
+  return useQuery({
+    queryKey: ['admin-catalogue'],
+    enabled,
+    queryFn: async () => {
+      const [categories, products, campaigns] = await Promise.all([
+        must(supabase.from('menu_categories').select('*').order('sort')),
+        must(supabase.from('products').select('*').order('sort')),
+        must(supabase.from('campaigns').select('*').order('sort')),
+      ]);
+      return { categories: categories as Category[], products: products as Product[], campaigns: campaigns as Campaign[] };
+    },
+  });
+}
+
+async function write<T>(p: PromiseLike<{ data: T | null; error: { message: string } | null }>): Promise<T> {
+  const { data, error } = await p;
+  if (error) throw new Error(error.message);
+  if (Array.isArray(data) && data.length === 0) throw new Error('not_allowed');
+  return data as T;
+}
+
+export async function saveProduct(id: string | null, patch: Partial<Product> & { is_active?: boolean }) {
+  return id
+    ? write(supabase.from('products').update(patch).eq('id', id).select())
+    : write(supabase.from('products').insert(patch).select());
+}
+
+export async function saveBranch(id: string, patch: Partial<Branch>) {
+  return write(supabase.from('branches').update(patch).eq('id', id).select());
+}
+
+export async function saveCampaign(id: string | null, patch: Partial<Campaign> & { is_active?: boolean }) {
+  return id
+    ? write(supabase.from('campaigns').update(patch).eq('id', id).select())
+    : write(supabase.from('campaigns').insert(patch).select());
+}
+
+export async function deleteCampaign(id: string) {
+  const { error } = await supabase.from('campaigns').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+export async function saveSettings(patch: Partial<Settings>) {
+  return write(supabase.from('app_settings').update(patch).eq('id', true).select());
+}
+
+/** Uploads a product photo to the public "menu" bucket and returns its image_path. */
+export async function uploadProductPhoto(productId: string, bytes: Uint8Array, contentType: string): Promise<string> {
+  const ext = contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : 'jpg';
+  const object = `products/${productId}-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from('menu').upload(object, bytes, { contentType, upsert: false });
+  if (error) throw new Error(error.message);
+  return `menu/${object}`;
+}
+
+export function useAdminReport(from: string, to: string, branchId: string | null) {
+  return useQuery({
+    queryKey: ['admin-report', from, to, branchId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_report', { p_from: from, p_to: to, p_branch: branchId });
+      if (error) throw new Error(error.message);
+      return data as Report;
+    },
+  });
+}
+
+export async function exportOrders(from: string, to: string, branchId: string | null): Promise<ExportRow[]> {
+  const { data, error } = await supabase.rpc('admin_export_orders', { p_from: from, p_to: to, p_branch: branchId });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as ExportRow[];
+}
+
+export function usePushAudience(branchId: string | null) {
+  return useQuery({
+    queryKey: ['push-audience', branchId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_push_audience', { p_branch: branchId });
+      if (error) throw new Error(error.message);
+      return data as { reachable: number; opted_in: number };
+    },
+  });
+}
+
+export function usePushCampaigns() {
+  return useQuery({
+    queryKey: ['push-campaigns'],
+    queryFn: async () => (await must(supabase.from('push_campaigns').select('*').order('created_at', { ascending: false }).limit(20))) as PushCampaign[],
+  });
+}
+
+export async function sendPushCampaign(title: string, body: string, branchId: string | null) {
+  const { data, error } = await supabase.rpc('admin_send_push', { p_title: title, p_body: body, p_branch: branchId });
+  if (error) throw new Error(error.message);
+  return data as { campaign_id: number; recipients: number };
 }

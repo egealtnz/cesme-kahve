@@ -11,7 +11,8 @@ import { Stepper } from '@/components/Stepper';
 import { ToggleRow } from '@/components/Controls';
 import { ProductPhoto } from '@/components/Product';
 import { Card, Divider, TopBar } from '@/components/Layout';
-import { useCatalogue, useRewards, useSoldOut } from '@/lib/api';
+import { useBranchesLive, useCatalogue, useRewards, useSoldOut } from '@/lib/api';
+import { branchState } from '@/lib/hours';
 import { tl } from '@/lib/format';
 import { priceCart } from '@/lib/pricing';
 import { useAuth } from '@/state/auth';
@@ -25,7 +26,8 @@ export default function CartScreen() {
   const rewards = useRewards(userId);
   const cart = useCart();
   const soldOut = useSoldOut(cart.branchId);
-  const branch = cat?.branches.find((b) => b.id === cart.branchId) ?? null;
+  const live = useBranchesLive();
+  const branch = (live.data ?? cat?.branches)?.find((b) => b.id === cart.branchId) ?? null;
   const rewardCount = session ? rewards.data?.length ?? 0 : 0;
 
   // Items that left the menu are dropped from the cart.
@@ -83,7 +85,7 @@ export default function CartScreen() {
           <View style={{ flex: 1 }}>
             <Txt variant="caption">Teslim alınacak şube</Txt>
             <Txt variant="body" style={{ fontFamily: 'DMSans-SemiBold' }}>{branch ? branch.name : 'Ödemeden önce seçeceksin'}</Txt>
-            {branch ? <Txt variant="caption">Yaklaşık {branch.prep_minutes} dakikada hazır</Txt> : null}
+            {branch ? <Txt variant="caption">{(() => { const st = branchState(branch); return st.orderNow ? `Yaklaşık ${st.waitMinutes} dakikada hazır` : `${st.label} · ileri saate sipariş verebilirsin`; })()}</Txt> : null}
           </View>
           <Button label={branch ? 'Değiştir' : 'Seç'} variant="tertiary" size="sm" onPress={() => router.push('/branches')} />
         </Card>

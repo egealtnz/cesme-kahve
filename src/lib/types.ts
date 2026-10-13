@@ -2,29 +2,43 @@ export type OrderStatus = 'awaiting_payment' | 'placed' | 'preparing' | 'ready' 
 export type PaymentMethod = 'card' | 'store';
 export type PaymentStatus = 'unpaid' | 'paid' | 'failed' | 'refunded';
 
+/** Opening hours by ISO weekday ("1" = Monday … "7" = Sunday), Turkey time; a missing day is closed. */
+export type OpeningHours = Partial<Record<'1' | '2' | '3' | '4' | '5' | '6' | '7', [string, string]>>;
 export type Branch = {
   id: string; name: string; district: string; city: string; address: string | null;
   prep_minutes: number; status: 'open' | 'closed' | 'coming_soon'; accepts_orders: boolean; sort: number;
+  opening_hours?: OpeningHours | null; busy_extra_minutes?: number; busy_until?: string | null; paused_until?: string | null;
 };
-export type Category = { id: string; name: string; blurb: string | null; is_drink: boolean; sort: number };
+export type Category = { id: string; name: string; blurb: string | null; is_drink: boolean; sort: number; is_active?: boolean };
 export type Product = {
   id: string; category_id: string; name: string; description: string | null; price: number;
   is_coffee: boolean; has_milk_options: boolean; image_path: string | null; badge: 'fresh' | null; sort: number;
+  is_active?: boolean;
 };
 export type Milk = { id: string; label: string; extra_price: number; is_plant: boolean; is_default: boolean; sort: number };
-export type Campaign = { id: string; tone: 'primary' | 'eco' | 'copper' | 'surface'; eyebrow: string | null; title: string; body: string | null; sort: number };
+export type Campaign = {
+  id: string; tone: 'primary' | 'eco' | 'copper' | 'surface'; eyebrow: string | null; title: string; body: string | null; sort: number;
+  is_active?: boolean; starts_at?: string | null; ends_at?: string | null;
+};
 export type Settings = {
   stamps_per_reward: number; reward_valid_days: number; own_cup_discount: number;
   second_coffee_pct: number; second_coffee_active: boolean; max_counter_stamps: number;
   card_payments_enabled: boolean;
   support_email: string | null; support_phone: string | null;
+  birthday_reward_enabled?: boolean; birthday_reward_days?: number;
+  winback_enabled?: boolean; winback_after_days?: number; winback_title?: string; winback_body?: string;
 };
 
 export type Profile = {
   id: string; first_name: string; last_name: string; phone: string | null; birthday: string | null;
   favorite_branch_id: string | null; marketing_opt_in: boolean; member_code: string; stamps: number;
 };
-export type Reward = { id: string; code: string; earned_at: string; expires_at: string; reserved_order_id: string | null; used_at: string | null };
+export type Reward = {
+  id: string; code: string; earned_at: string; expires_at: string; reserved_order_id: string | null; used_at: string | null;
+  reason?: 'stamps' | 'birthday' | 'gift';
+};
+export type Favorite = { id: number; product_id: string; milk_id: string | null; created_at: string };
+export type OrderRating = { liked: boolean; comment: string | null };
 
 export type OrderItem = {
   id: number; product_id: string | null; product_name: string; milk_label: string | null;
@@ -36,7 +50,9 @@ export type Order = {
   eco_packaging: boolean; own_cup: boolean; subtotal: number; reward_discount: number; campaign_discount: number;
   cup_discount: number; total: number; rewards_used: number; stamps_earned: number;
   created_at: string; ready_at: string | null; collected_at: string | null; cancelled_at: string | null; cancel_reason: string | null;
+  pickup_at?: string | null;
   order_items?: OrderItem[];
+  order_ratings?: OrderRating | null;
   /** Staff actions on the order (branch staff only). */
   order_events?: OrderEvent[];
   branch?: Pick<Branch, 'name' | 'district' | 'city' | 'prep_minutes'>;
@@ -50,3 +66,19 @@ export type TeamMember = {
 };
 export type TeamInvite = { email: string; role: StaffRole; since: string };
 export type BranchTeam = { members: TeamMember[]; invites: TeamInvite[] };
+
+// ---------------------------------------------------------------- owner report
+export type Report = {
+  totals: { orders: number; revenue: number; avg_ticket: number; coffees: number; cancelled: number; customers: number; likes: number; dislikes: number; scheduled: number };
+  by_branch: { branch_id: string; name: string; orders: number; revenue: number; likes: number; dislikes: number }[];
+  top_products: { name: string; qty: number; revenue: number }[];
+  by_hour: { hour: number; orders: number }[];
+  by_day: { day: string; orders: number; revenue: number }[];
+  comments: { liked: boolean; comment: string; created_at: string; branch: string; order_no: number }[];
+};
+export type ExportRow = {
+  order_no: number; created_at: string; pickup_at: string | null; branch: string; customer: string; status: string;
+  payment: string; subtotal: number; discount: number; total: number; items: string; liked: boolean | null; comment: string | null;
+  handled_by: string | null;
+};
+export type PushCampaign = { id: number; title: string; body: string; branch_id: string | null; recipients: number; created_at: string };
