@@ -3,6 +3,8 @@ import { Tabs } from 'expo-router';
 import { House, ShoppingBag, Store, User } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Txt } from '@/components/Txt';
+import { Bump } from '@/components/Motion';
+import { L } from '@/lib/i18n';
 import { useAuth } from '@/state/auth';
 import { useCart } from '@/state/cart';
 import { color, font, radius, shadow } from '@/theme/tokens';
@@ -10,11 +12,11 @@ import { color, font, radius, shadow } from '@/theme/tokens';
 function TabIcon({ Icon, focused, count }: { Icon: typeof House; focused: boolean; count?: number }) {
   return (
     <View style={[styles.pill, focused && { backgroundColor: color.secondarySoft }]}>
-      <Icon size={24} color={focused ? color.ink : color.inkMuted} strokeWidth={1.75} />
+      <Bump trigger={focused}><Icon size={24} color={focused ? color.ink : color.inkMuted} strokeWidth={1.75} /></Bump>
       {count ? (
-        <View style={styles.count}>
+        <Bump trigger={count} style={styles.count}>
           <Txt variant="caption" color="onSecondary" style={{ fontFamily: font.bold, fontSize: 11, lineHeight: 14 }}>{count > 9 ? '9+' : count}</Txt>
-        </View>
+        </Bump>
       ) : null}
     </View>
   );
@@ -28,6 +30,7 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        animation: 'shift',
         tabBarActiveTintColor: color.ink,
         tabBarInactiveTintColor: color.inkMuted,
         tabBarLabelStyle: { fontFamily: font.medium, fontSize: 12 },
@@ -44,19 +47,19 @@ export default function TabsLayout() {
         sceneStyle: { backgroundColor: color.background },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Ana sayfa', tabBarIcon: ({ focused }) => <TabIcon Icon={House} focused={focused} /> }} />
+      <Tabs.Screen name="index" options={{ title: L('Ana sayfa', 'Home'), tabBarIcon: ({ focused }) => <TabIcon Icon={House} focused={focused} /> }} />
       <Tabs.Screen
         name="cart"
         options={{
-          title: 'Sepet',
-          tabBarAccessibilityLabel: count ? `Sepet, ${count} ürün` : 'Sepet',
+          title: L('Sepet', 'Cart'),
+          tabBarAccessibilityLabel: count ? L(`Sepet, ${count} ürün`, `Cart, ${count} items`) : L('Sepet', 'Cart'),
           tabBarIcon: ({ focused }) => <TabIcon Icon={ShoppingBag} focused={focused} count={count} />,
         }}
       />
-      <Tabs.Screen name="profile" options={{ title: 'Profil', tabBarIcon: ({ focused }) => <TabIcon Icon={User} focused={focused} /> }} />
+      <Tabs.Screen name="profile" options={{ title: L('Profil', 'Profile'), tabBarIcon: ({ focused }) => <TabIcon Icon={User} focused={focused} /> }} />
       <Tabs.Screen
         name="staff"
-        options={{ title: 'Şube', href: isStaff ? undefined : null, tabBarIcon: ({ focused }) => <TabIcon Icon={Store} focused={focused} /> }}
+        options={{ title: L('Şube', 'Branch'), href: isStaff ? undefined : null, tabBarIcon: ({ focused }) => <TabIcon Icon={Store} focused={focused} /> }}
       />
     </Tabs>
   );

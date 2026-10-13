@@ -9,6 +9,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '@/state/auth';
 import { CartProvider, useCart } from '@/state/cart';
 import { ToastProvider } from '@/state/toast';
+import { LangProvider } from '@/state/lang';
+import { LocaleSync } from '@/components/LocaleSync';
 import { useNotificationRouting } from '@/lib/notifications';
 import { color } from '@/theme/tokens';
 import { DemoBadge } from '@/components/Demo';
@@ -44,12 +46,15 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <CartProvider>
-            <ToastProvider>
-              <StatusBar style="dark" />
-              {fontsLoaded ? <Navigator /> : null}
-              {fontsLoaded ? <DemoBadge /> : null}
-              {fontsLoaded ? <UpdateBanner /> : null}
-            </ToastProvider>
+            <LangProvider>
+              <ToastProvider>
+                <StatusBar style="dark" />
+                {fontsLoaded ? <Navigator /> : null}
+                {fontsLoaded ? <DemoBadge /> : null}
+                {fontsLoaded ? <UpdateBanner /> : null}
+                <LocaleSync />
+              </ToastProvider>
+            </LangProvider>
           </CartProvider>
         </AuthProvider>
       </QueryClientProvider>
@@ -72,7 +77,9 @@ function Navigator() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: color.background },
-        animation: Platform.OS === 'android' ? 'fade_from_bottom' : 'default',
+        animation: 'ios_from_right',
+        animationDuration: 320,
+        gestureEnabled: true,
       }}
     >
       <Stack.Screen name="(tabs)" />
@@ -82,7 +89,9 @@ function Navigator() {
       />
       <Stack.Screen name="auth" />
       <Stack.Screen name="checkout" />
-      <Stack.Screen name="order/[id]" />
+      <Stack.Screen name="order/[id]" options={{ animation: 'fade_from_bottom' }} />
+      <Stack.Screen name="masa" options={{ animation: 'fade' }} />
+      <Stack.Screen name="table-scan" options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="loyalty" />
       <Stack.Screen name="branches" />
       <Stack.Screen name="account" />

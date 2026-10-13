@@ -9,6 +9,7 @@ import { handlers, useBranchHistory } from '@/lib/api';
 import { dayKey, dayLabel, dayMonth, timeOf, tl } from '@/lib/format';
 import type { Order } from '@/lib/types';
 import { color, radius, space } from '@/theme/tokens';
+import { counterExtras } from './StaffOrderBits';
 
 const RANGES = [
   { days: 1, label: 'Bugün' },
@@ -107,7 +108,7 @@ export function StaffHistory({ branchId }: { branchId: string | null }) {
                   </Txt>
                 </View>
                 <Txt variant="bodySm" color="inkMuted" numberOfLines={2}>
-                  {(o.order_items ?? []).map((it) => `${it.quantity}× ${it.product_name}${it.milk_label ? ` (${it.milk_label})` : ''}`).join(', ')}
+                  {(o.order_items ?? []).map((it) => `${it.quantity}× ${it.product_name}${counterExtras(it) ? ` (${counterExtras(it)})` : ''}`).join(', ')}{o.table_label ? ` · Masa ${o.table_label}` : ''}{o.note ? ` · Not: “${o.note}”` : ''}
                 </Txt>
                 <View style={styles.meta}>
                   {o.status === 'collected'

@@ -1,8 +1,10 @@
+import { L, localeTag } from './i18n';
+
 /** Kuruş → "₺95" or "₺97,50" (Turkish formatting). */
 export function tl(kurus: number): string {
   const lira = kurus / 100;
   const whole = kurus % 100 === 0;
-  return '₺' + lira.toLocaleString('tr-TR', { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 });
+  return '₺' + lira.toLocaleString(localeTag(), { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 });
 }
 
 export function trLower(s: string): string {
@@ -11,18 +13,18 @@ export function trLower(s: string): string {
 
 export function greeting(date = new Date()): string {
   const h = date.getHours();
-  if (h >= 5 && h < 11) return 'Günaydın';
-  if (h >= 11 && h < 17) return 'İyi günler';
-  if (h >= 17 && h < 22) return 'İyi akşamlar';
-  return 'İyi geceler';
+  if (h >= 5 && h < 11) return L('Günaydın', 'Good morning');
+  if (h >= 11 && h < 17) return L('İyi günler', 'Good afternoon');
+  if (h >= 17 && h < 22) return L('İyi akşamlar', 'Good evening');
+  return L('İyi geceler', 'Good evening');
 }
 
 export function shortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return new Date(iso).toLocaleDateString(localeTag(), { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 export function timeOf(iso: string): string {
-  return new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleTimeString(localeTag(), { hour: '2-digit', minute: '2-digit' });
 }
 
 /** "5321234567" → "532 123 45 67" */
@@ -42,14 +44,14 @@ export function dayLabel(iso: string, now = new Date()): string {
   const d = new Date(iso);
   const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const diff = Math.round((start(now) - start(d)) / 86_400_000);
-  if (diff === 0) return 'Bugün';
-  if (diff === 1) return 'Dün';
-  return d.toLocaleDateString('tr-TR', {
+  if (diff === 0) return L('Bugün', 'Today');
+  if (diff === 1) return L('Dün', 'Yesterday');
+  return d.toLocaleDateString(localeTag(), {
     day: 'numeric', month: 'long', weekday: 'long', ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}),
   });
 }
 
 /** "12 Eki" */
 export function dayMonth(iso: string): string {
-  return new Date(iso).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+  return new Date(iso).toLocaleDateString(localeTag(), { day: 'numeric', month: 'short' });
 }

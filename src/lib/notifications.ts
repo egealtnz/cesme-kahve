@@ -6,6 +6,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
+import { L } from './i18n';
 
 if (Platform.OS !== 'web') {
   Notifications.setNotificationHandler({
@@ -19,20 +20,20 @@ const TOKEN_KEY = 'ck.push.token';
 async function ensureChannels() {
   if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync('orders', {
-    name: 'Sipariş durumu',
-    description: 'Siparişin hazır olduğunda haber verir.',
+    name: L('Sipariş durumu', 'Order status'),
+    description: L('Siparişin hazır olduğunda haber verir.', 'Tells you when your order is ready.'),
     importance: Notifications.AndroidImportance.HIGH,
     lightColor: '#CA812A',
   });
   await Notifications.setNotificationChannelAsync('rewards', {
-    name: 'Hediye kahveler',
-    description: 'Doğum günü kahven gibi hesabına eklenen hediyeler.',
+    name: L('Hediye kahveler', 'Free coffees'),
+    description: L('Doğum günü kahven gibi hesabına eklenen hediyeler.', 'Treats added to your account, like your birthday coffee.'),
     importance: Notifications.AndroidImportance.DEFAULT,
     lightColor: '#CA812A',
   });
   await Notifications.setNotificationChannelAsync('offers', {
-    name: 'Kampanyalar',
-    description: 'İzin verdiysen kampanya ve fırsat duyuruları.',
+    name: L('Kampanyalar', 'Offers'),
+    description: L('İzin verdiysen kampanya ve fırsat duyuruları.', 'Offers and news, if you agreed to receive them.'),
     importance: Notifications.AndroidImportance.DEFAULT,
     lightColor: '#CA812A',
   });

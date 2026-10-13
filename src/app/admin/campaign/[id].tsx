@@ -35,6 +35,9 @@ function CampaignForm({ campaign }: { campaign?: Campaign }) {
   const [eyebrow, setEyebrow] = useState(campaign?.eyebrow ?? '');
   const [title, setTitle] = useState(campaign?.title ?? '');
   const [body, setBody] = useState(campaign?.body ?? '');
+  const [eyebrowEn, setEyebrowEn] = useState(campaign?.eyebrow_en ?? '');
+  const [titleEn, setTitleEn] = useState(campaign?.title_en ?? '');
+  const [bodyEn, setBodyEn] = useState(campaign?.body_en ?? '');
   const [active, setActive] = useState(campaign?.is_active ?? true);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -46,7 +49,8 @@ function CampaignForm({ campaign }: { campaign?: Campaign }) {
     if (!title.trim()) { setTitleError('Başlık yaz.'); return; }
     setSaving(true);
     try {
-      const patch = { tone, eyebrow: eyebrow.trim() || null, title: title.trim(), body: body.trim() || null, is_active: active };
+      const patch = { tone, eyebrow: eyebrow.trim() || null, title: title.trim(), body: body.trim() || null, is_active: active,
+        eyebrow_en: eyebrowEn.trim() || null, title_en: titleEn.trim() || null, body_en: bodyEn.trim() || null };
       await saveCampaign(campaign?.id ?? null, campaign ? patch : { ...patch, id: `kampanya-${Date.now().toString(36)}`, sort: 50 });
       await refresh();
       toast('Kampanya kartı kaydedildi.');
@@ -93,6 +97,13 @@ function CampaignForm({ campaign }: { campaign?: Campaign }) {
         <Field label="Başlık" value={title} onChangeText={(t) => { setTitle(t); setTitleError(undefined); }} error={titleError} maxLength={60} placeholder="ör. Soğuk kahvelerde %20" />
         <Field label="Açıklama" optional value={body} onChangeText={setBody} maxLength={120} placeholder="Kısa bir cümle" />
       </View>
+      <Card style={{ marginTop: space[5], gap: space[4] }}>
+        <Txt variant="h6">İngilizce (yabancı müşteriler için)</Txt>
+        <Txt variant="bodySm" color="inkMuted">Boş bırakılan alanlarda Türkçesi görünür.</Txt>
+        <Field label="Üst yazı (İngilizce)" optional value={eyebrowEn} onChangeText={setEyebrowEn} maxLength={30} placeholder="e.g. This week" />
+        <Field label="Başlık (İngilizce)" optional value={titleEn} onChangeText={setTitleEn} maxLength={60} placeholder="e.g. 20% off iced coffees" />
+        <Field label="Açıklama (İngilizce)" optional value={bodyEn} onChangeText={setBodyEn} maxLength={120} />
+      </Card>
       <Card style={{ marginTop: space[5] }}>
         <ToggleRow icon={Eye} tone="soft" title="Ana sayfada göster" value={active} onChange={setActive} />
       </Card>

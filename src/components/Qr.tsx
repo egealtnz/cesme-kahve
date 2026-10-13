@@ -4,6 +4,8 @@ import Svg, { Path, Rect } from 'react-native-svg';
 import qrcode from 'qrcode-generator';
 import { Coffee } from 'lucide-react-native';
 import { color } from '@/theme/tokens';
+import { Pop } from './Motion';
+import { L } from '@/lib/i18n';
 
 export function QrCode({ value, size = 200, label }: { value: string; size?: number; label: string }) {
   const { d, n } = useMemo(() => {
@@ -27,11 +29,13 @@ export function QrCode({ value, size = 200, label }: { value: string; size?: num
 
 export function StampRow({ filled, total }: { filled: number; total: number }) {
   return (
-    <View style={styles.row} accessible accessibilityLabel={`${total} damgadan ${filled} damga`}>
+    <View style={styles.row} accessible accessibilityLabel={L(`${total} damgadan ${filled} damga`, `${filled} of ${total} stamps`)}>
       {Array.from({ length: total }, (_, i) => (
-        <View key={i} style={[styles.stamp, i < filled ? styles.on : styles.off]}>
-          {i < filled ? <Coffee size={14} color={color.onSecondary} strokeWidth={1.75} /> : null}
-        </View>
+        i < filled ? (
+          <Pop key={i} delay={120 + i * 70} style={[styles.stamp, styles.on]}>
+            <Coffee size={14} color={color.onSecondary} strokeWidth={1.75} />
+          </Pop>
+        ) : <View key={i} style={[styles.stamp, styles.off]} />
       ))}
     </View>
   );

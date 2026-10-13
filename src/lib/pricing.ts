@@ -1,18 +1,24 @@
-// Mirrors place_order() in supabase/migrations/…_logic.sql so the cart can show a total before the
-// order exists. The server's number is the one that is charged; the confirm screen shows it.
-import type { Milk, Product, Settings } from './types';
+// Mirrors place_order() in supabase/migrations so the cart can show a total before the order exists.
+// The server's number is the one that is charged; the confirm screen shows it.
+import type { Milk, OptionValue, Product, Settings } from './types';
 
-export type PricedLine = { key: string; product: Product; milk: Milk | null; unit: number; qty: number; free: number };
+export type PricedLine = {
+  key: string; product: Product; milk: Milk | null; options: OptionValue[]; unit: number; qty: number; free: number;
+};
 export type Totals = {
   lines: PricedLine[]; subtotal: number; reward: number; campaign: number; cup: number; total: number;
   count: number; coffees: number; paidCoffees: number; freeCount: number; hasDrink: boolean;
 };
 
+/** Unit price of a product with its milk and options. */
+export const unitPrice = (product: Product, milk: Milk | null, options: OptionValue[] = []) =>
+  product.price + (milk?.extra_price ?? 0) + options.reduce((s, o) => s + o.extra_price, 0);
+
 export function priceCart(
-  lines: { key: string; product: Product; milk: Milk | null; qty: number }[],
+  lines: { key: string; product: Product; milk: Milk | null; options?: OptionValue[]; qty: number }[],
   opts: { useRewards: number; ownCup: boolean; settings: Settings; drinkCategories: Set<string> },
 ): Totals {
-  const priced: PricedLine[] = lines.map((l) => ({ ...l, unit: l.product.price + (l.milk?.extra_price ?? 0), free: 0 }));
+  const priced: PricedLine[] = lines.map((l) => ({ ...l, options: l.options ?? [], unit: unitPrice(l.product, l.milk, l.options), free: 0 }));
   const subtotal = priced.reduce((s, l) => s + l.unit * l.qty, 0);
   const coffeeTotal = priced.filter((l) => l.product.is_coffee).reduce((s, l) => s + l.qty, 0);
 

@@ -5,17 +5,18 @@ import { Card, Screen, TopBar } from '@/components/Layout';
 import { useCatalogue } from '@/lib/api';
 import { fill, legalDoc } from '@/lib/legal';
 import { space } from '@/theme/tokens';
+import { L } from '@/lib/i18n';
 
 export default function LegalScreen() {
   const { doc } = useLocalSearchParams<{ doc: string }>();
   const { data: cat } = useCatalogue();
   const d = legalDoc(doc);
-  if (!d) return <Screen><TopBar back /><Txt variant="body" style={{ marginTop: space[6] }}>Metin bulunamadı.</Txt></Screen>;
+  if (!d) return <Screen><TopBar back /><Txt variant="body" style={{ marginTop: space[6] }}>{L('Metin bulunamadı.', 'Document not found.')}</Txt></Screen>;
   return (
     <Screen>
       <TopBar back />
       <Txt variant="h2" accessibilityRole="header" style={{ marginTop: space[5] }}>{d.title}</Txt>
-      <Txt variant="caption" color="inkMuted" style={{ marginTop: space[1] }}>Son güncelleme: {d.updated}</Txt>
+      <Txt variant="caption" color="inkMuted" style={{ marginTop: space[1] }}>{L('Son güncelleme', 'Last updated')}: {d.updated}{L('', ' · in Turkish')}</Txt>
       <Card style={{ marginTop: space[5], gap: space[3] }}>
         {d.blocks.map(([kind, text], i) =>
           kind === 'h' ? (

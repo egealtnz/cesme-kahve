@@ -1,6 +1,6 @@
 // Home screen for signed-in customers: rate the last order, order "the usual" again, favourite drinks.
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { Heart, Plus, RotateCcw } from 'lucide-react-native';
 import { Txt } from './Txt';
 import { Button } from './Button';
@@ -9,6 +9,9 @@ import { RatingCard } from './RatingCard';
 import { useCatalogue, useFavorites, useMyOrders } from '@/lib/api';
 import { tl } from '@/lib/format';
 import { useReorder } from '@/lib/reorder';
+import { L } from '@/lib/i18n';
+import { itemLine, milkLabel, productName } from '@/lib/display';
+import { FadeIn, PressableScale } from './Motion';
 import { useCart } from '@/state/cart';
 import { useToast } from '@/state/toast';
 import { color, radius, shadow, space } from '@/theme/tokens';
@@ -36,41 +39,44 @@ export function ForYou({ userId, soldOut }: { userId: string; soldOut?: Set<stri
       {rateNow ? <View style={styles.pad}><RatingCard order={rateNow} compact /></View> : null}
 
       {last ? (
-        <View style={[styles.pad]}>
+        <FadeIn style={[styles.pad]}>
           <View style={styles.again}>
             <View style={{ flex: 1, gap: 2 }}>
-              <Txt variant="overline" color="secondaryInk">Her zamankinden</Txt>
+              <Txt variant="overline" color="secondaryInk">{L('Her zamankinden', 'The usual')}</Txt>
               <Txt variant="body" numberOfLines={2} style={{ fontFamily: 'DMSans-SemiBold' }}>
-                {(last.order_items ?? []).map((i) => `${i.quantity}× ${i.product_name}${i.milk_label ? ` (${i.milk_label})` : ''}`).join(', ')}
+                {(last.order_items ?? []).map((i) => itemLine(i, cat)).join(', ')}
               </Txt>
-              <Txt variant="caption" color="inkMuted">Son siparişin · {last.branch?.name}</Txt>
+              <Txt variant="caption" color="inkMuted">{L('Son siparişin', 'Your last order')} · {last.branch?.name}</Txt>
             </View>
-            <Button label="Tekrarla" icon={RotateCcw} size="sm" onPress={() => reorder(last, soldOut)} />
+            <Button label={L('Tekrarla', 'Again')} icon={RotateCcw} size="sm" onPress={() => reorder(last, soldOut)} />
           </View>
-        </View>
+        </FadeIn>
       ) : null}
 
       {favs.length ? (
         <View>
           <View style={[styles.pad, styles.head]}>
             <Heart size={16} color={color.secondaryInk} strokeWidth={2} />
-            <Txt variant="overline" color="secondaryInk">Favorilerin</Txt>
+            <Txt variant="overline" color="secondaryInk">{L('Favorilerin', 'Your favourites')}</Txt>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: space[4], gap: space[3], paddingVertical: space[2] }}>
-            {favs.map(({ f, p, milk }) => {
+            {favs.map(({ f, p, milk }, i) => {
               const out = soldOut?.has(p.id);
+              const name = productName(p);
               return (
-                <Pressable key={f.id} accessibilityRole="button" accessibilityLabel={`${p.name}${milk ? `, ${milk.label}` : ''}, sepete ekle`}
-                  disabled={out}
-                  onPress={() => { cart.add(p.id, milk?.id ?? null); toast(`${p.name} sepete eklendi`); }}
-                  style={({ pressed }) => [styles.fav, out && { opacity: 0.5 }, pressed && { opacity: 0.85 }]}>
-                  <ProductPhoto product={p} size={48} soldOut={out} />
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Txt variant="label" numberOfLines={1}>{p.name}</Txt>
-                    <Txt variant="caption" color="inkMuted" numberOfLines={1}>{out ? 'Tükendi' : milk ? milk.label : tl(p.price)}</Txt>
-                  </View>
-                  <View style={styles.plus}><Plus size={18} color={color.onPrimary} strokeWidth={2} /></View>
-                </Pressable>
+                <FadeIn key={f.id} index={i}>
+                  <PressableScale accessibilityRole="button" accessibilityLabel={L(`${name}${milk ? `, ${milkLabel(milk)}` : ''}, sepete ekle`, `${name}${milk ? `, ${milkLabel(milk)}` : ''}, add to cart`)}
+                    disabled={out}
+                    onPress={() => { cart.add(p.id, milk?.id ?? null); toast(L(`${name} sepete eklendi`, `${name} added to your cart`)); }}
+                    style={[styles.fav, out && { opacity: 0.5 }]}>
+                    <ProductPhoto product={p} size={48} soldOut={out} />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Txt variant="label" numberOfLines={1}>{name}</Txt>
+                      <Txt variant="caption" color="inkMuted" numberOfLines={1}>{out ? L('Tükendi', 'Sold out') : milk ? milkLabel(milk) : tl(p.price)}</Txt>
+                    </View>
+                    <View style={styles.plus}><Plus size={18} color={color.onPrimary} strokeWidth={2} /></View>
+                  </PressableScale>
+                </FadeIn>
               );
             })}
           </ScrollView>

@@ -17,7 +17,7 @@ export const STATUS_TONE: Record<OrderStatus, BadgeTone> = {
 
 export function AdminOrderRow({ o }: {
   o: { id: string; order_no: number; status: OrderStatus; total: number; created_at: string; pickup_at?: string | null;
-       customer_name?: string | null; branch?: string | null; items?: string | null };
+       customer_name?: string | null; branch?: string | null; items?: string | null; table_label?: string | null };
 }) {
   const who = [o.customer_name ?? (o.customer_name === undefined ? null : 'Misafir'), o.branch].filter(Boolean).join(' · ');
   return (
@@ -32,7 +32,7 @@ export function AdminOrderRow({ o }: {
         {who ? <Txt variant="bodySm" numberOfLines={1}>{who}</Txt> : null}
         {o.items ? <Txt variant="caption" color="inkMuted" numberOfLines={2}>{o.items}</Txt> : null}
         <Txt variant="caption" color="inkMuted">
-          {dayMonth(o.created_at)} {timeOf(o.created_at)}{o.pickup_at ? ` · Teslim: ${pickupLabel(o.pickup_at)}` : ''}
+          {dayMonth(o.created_at)} {timeOf(o.created_at)}{o.pickup_at ? ` · Teslim: ${pickupLabel(o.pickup_at)}` : ''}{o.table_label ? ` · Masa ${o.table_label}` : ''}
         </Txt>
       </View>
       <Txt variant="label" style={{ fontVariant: ['tabular-nums'] }}>{tl(o.total)}</Txt>

@@ -11,7 +11,7 @@ import { sendPush } from '../_shared/push.ts';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type Item = { product_name: string; milk_label: string | null; quantity: number };
+type Item = { product_name: string; milk_label: string | null; options_label: string | null; quantity: number };
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
   const { data: order, error } = await db.from('orders')
     .update({ staff_notified_at: new Date().toISOString() })
     .eq('id', body.order_id).eq('status', 'placed').is('staff_notified_at', null)
-    .select('id, order_no, branch_id, customer_name, payment_method, total, own_cup, order_items(product_name, milk_label, quantity)')
+    .select('id, order_no, branch_id, customer_name, payment_method, total, own_cup, table_label, note, order_items(product_name, milk_label, options_label, quantity)')
     .maybeSingle();
   if (error) return fail('update_failed', 500, error.message);
   if (!order) return json({ skipped: true });
@@ -38,10 +38,14 @@ Deno.serve(async (req) => {
   if (!tokens?.length) return json({ sent: 0 });
 
   const items = (order.order_items as Item[] | null) ?? [];
-  const summary = items.map((i) => i.quantity + '× ' + i.product_name + (i.milk_label ? ' (' + i.milk_label + ')' : '')).join(', ');
+  const summary = items.map((i) => {
+    const extra = [i.milk_label, i.options_label].filter(Boolean).join(' · ');
+    return i.quantity + '× ' + i.product_name + (extra ? ' (' + extra + ')' : '');
+  }).join(', ');
   const payment = order.total === 0 ? 'Hediye' : order.payment_method === 'card' ? 'Kartla ödendi' : 'Kasada ödenecek';
-  const title = 'Yeni sipariş #' + order.order_no + (order.customer_name ? ' · ' + order.customer_name : '');
-  const text = [summary, payment, order.own_cup ? 'Kendi bardağı' : ''].filter(Boolean).join(' · ');
+  const title = (order.table_label ? 'Masa ' + order.table_label + ' · ' : '') + 'Yeni sipariş #' + order.order_no
+    + (order.customer_name ? ' · ' + order.customer_name : '');
+  const text = [summary, payment, order.own_cup ? 'Kendi bardağı' : '', order.note ? 'Not: ' + order.note : ''].filter(Boolean).join(' · ');
 
   try {
     const sent = await sendPush(db, [...new Set(tokens.map((t) => t.token as string))].map((to) => ({

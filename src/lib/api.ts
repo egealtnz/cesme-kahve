@@ -6,6 +6,7 @@ import { callFunction, IS_DEMO, supabase } from './supabase';
 import type {
   AdminOrderRow, CompanyStaff, CustomerDetail, CustomerSearch, LiveOverview,
   ExportRow, Favorite, OrderRating, PushCampaign, Report,
+  OptionGroup, OptionValue,
   Branch, BranchTeam, Campaign, Category, Milk, Order, OrderStatus, PaymentMethod, Product, Profile, Reward, Settings, StaffMembership,
 } from './types';
 
@@ -28,6 +29,9 @@ export type Catalogue = {
   branches: Branch[]; categories: Category[]; products: Product[]; milks: Milk[];
   campaigns: Campaign[]; settings: Settings;
   productById: Map<string, Product>; milkById: Map<string, Milk>; drinkCategories: Set<string>;
+  /** Drink customisation: the option groups a product offers, each with its active values. */
+  optionsFor: (productId: string) => { group: OptionGroup; values: OptionValue[] }[];
+  valueById: Map<string, OptionValue>;
 };
 
 export function useCatalogue() {
@@ -35,15 +39,27 @@ export function useCatalogue() {
     queryKey: ['catalogue'],
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<Catalogue> => {
-      const [branches, categories, products, milks, campaigns, settings] = await Promise.all([
+      const [branches, categories, products, milks, campaigns, settings, groups, values, links] = await Promise.all([
         must(supabase.from('branches').select('*').order('sort')),
         must(supabase.from('menu_categories').select('*').order('sort')),
         must(supabase.from('products').select('*').order('sort')),
         must(supabase.from('milk_options').select('*').order('sort')),
         must(supabase.from('campaigns').select('*').order('sort')),
         must(supabase.from('app_settings').select('*').single()),
+        must(supabase.from('option_groups').select('*').order('sort')),
+        must(supabase.from('option_values').select('*').order('sort')),
+        must(supabase.from('product_option_groups').select('product_id, group_id')),
       ]);
+      const og = (groups as OptionGroup[]).filter((g) => g.is_active !== false);
+      const ov = (values as OptionValue[]).filter((v) => v.is_active !== false);
+      const byProduct = new Map<string, string[]>();
+      for (const l of links as { product_id: string; group_id: string }[]) byProduct.set(l.product_id, [...(byProduct.get(l.product_id) ?? []), l.group_id]);
+      const optionsFor = (productId: string) => og
+        .filter((g) => byProduct.get(productId)?.includes(g.id))
+        .map((group) => ({ group, values: ov.filter((v) => v.group_id === group.id) }))
+        .filter((x) => x.values.length > 0);
       return {
+        optionsFor, valueById: new Map(ov.map((v) => [v.id, v])),
         branches: branches as Branch[], categories: categories as Category[], products: products as Product[],
         milks: milks as Milk[], campaigns: campaigns as Campaign[], settings: settings as unknown as Settings,
         productById: new Map((products as Product[]).map((p) => [p.id, p])),
@@ -153,17 +169,22 @@ export function useOrder(orderId: string | undefined, userId: string | undefined
 // ---------------------------------------------------------------- ordering
 export type PlaceOrderInput = {
   branchId: string;
-  items: { product_id: string; milk_id: string | null; quantity: number }[];
+  items: { product_id: string; milk_id: string | null; quantity: number; options?: string[] }[];
   paymentMethod: PaymentMethod;
   useRewards: number;
   eco: boolean;
   ownCup: boolean;
   /** null = as soon as possible */
   pickupAt?: string | null;
+  /** table number from the QR code: brought to the table */
+  table?: string | null;
+  note?: string | null;
 };
 
 export async function placeOrder(input: PlaceOrderInput): Promise<Order> {
-  const { data, error } = await supabase.rpc('place_order_v2', {
+  const { data, error } = await supabase.rpc('place_order_v3', {
+    p_table: input.table ?? null,
+    p_note: input.note?.trim() || null,
     p_branch_id: input.branchId,
     p_items: input.items,
     p_payment_method: input.paymentMethod,
@@ -374,12 +395,19 @@ export function useAdminCatalogue(enabled: boolean) {
     queryKey: ['admin-catalogue'],
     enabled,
     queryFn: async () => {
-      const [categories, products, campaigns] = await Promise.all([
+      const [categories, products, campaigns, groups, values, links] = await Promise.all([
         must(supabase.from('menu_categories').select('*').order('sort')),
         must(supabase.from('products').select('*').order('sort')),
         must(supabase.from('campaigns').select('*').order('sort')),
+        must(supabase.from('option_groups').select('*').order('sort')),
+        must(supabase.from('option_values').select('*').order('sort')),
+        must(supabase.from('product_option_groups').select('product_id, group_id')),
       ]);
-      return { categories: categories as Category[], products: products as Product[], campaigns: campaigns as Campaign[] };
+      return {
+        categories: categories as Category[], products: products as Product[], campaigns: campaigns as Campaign[],
+        optionGroups: groups as OptionGroup[], optionValues: values as OptionValue[],
+        productGroups: links as { product_id: string; group_id: string }[],
+      };
     },
   });
 }
@@ -539,4 +567,28 @@ export async function saveMilk(id: string, patch: Partial<Milk>) {
 
 export async function saveCategory(id: string, patch: Partial<Category>) {
   return write(supabase.from('menu_categories').update(patch).eq('id', id).select());
+}
+
+/** Which option groups (size, syrup…) a product offers. */
+export async function setProductGroups(productId: string, groupIds: string[], current: string[]) {
+  const add = groupIds.filter((g) => !current.includes(g));
+  const remove = current.filter((g) => !groupIds.includes(g));
+  if (remove.length) {
+    const { error } = await supabase.from('product_option_groups').delete().eq('product_id', productId).in('group_id', remove);
+    if (error) throw new Error(error.message);
+  }
+  if (add.length) {
+    const { error } = await supabase.from('product_option_groups').insert(add.map((group_id) => ({ product_id: productId, group_id })));
+    if (error) throw new Error(error.message);
+  }
+}
+
+export async function saveOptionGroup(id: string, patch: Partial<OptionGroup>) {
+  return write(supabase.from('option_groups').update(patch).eq('id', id).select());
+}
+
+export async function saveOptionValue(id: string | null, patch: Partial<OptionValue>) {
+  return id
+    ? write(supabase.from('option_values').update(patch).eq('id', id).select())
+    : write(supabase.from('option_values').insert(patch).select());
 }

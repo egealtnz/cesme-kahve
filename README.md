@@ -79,7 +79,7 @@ Yerelde gönderilen doğrulama e-postaları `http://127.0.0.1:54324` (Inbucket) 
 ```bash
 npm run typecheck        # TypeScript
 npm run lint             # ESLint (expo lint)
-npm run test:backend     # 29 uçtan uca test: RLS, fiyat, damga/hediye, personel ve ekip yetkileri, ödeme, iade, şube bildirimi, yönetici araçları, çalışma saatleri, ileri saat, favori, değerlendirme, rapor, doğum günü, bildirim, şirket paneli, hesap silme
+npm run test:backend     # 30 uçtan uca test: RLS, fiyat, damga/hediye, personel ve ekip yetkileri, ödeme, iade, şube bildirimi, yönetici araçları, çalışma saatleri, ileri saat, favori, değerlendirme, rapor, doğum günü, bildirim, şirket paneli, içecek seçenekleri, not, masaya servis, hesap silme
 ```
 
 `test:backend` yalnızca **yerel veya staging** projede çalıştırılmalı; test kullanıcıları oluşturup siler:
@@ -122,9 +122,9 @@ Yönetici (`admin`, şirketin sahibi/genel müdürü) hesabıyla **Profil → İ
 | **Müşteriler** | Üye sayısı, son 7 günde katılan, kampanya izni; ad / e-posta / telefon / üye koduyla arama. Müşteri sayfasında harcama, kahve kartı, hediye kahveler, son siparişler; **hediye kahve gönder** (bildirimle) ve **damga düzelt**. |
 | **Ekip** | Tüm şubelerin müdür ve baristaları şube şube, son giriş tarihi, bekleyen davetler, müdürü olmayan şube uyarısı; **Excel'e aktar (CSV)**. Ekleme/çıkarma şubenin “Yönet” bağlantısından. |
 | **Satışlar** | Bugün / 7 / 30 / 90 gün, tüm şubeler ya da tek şube: ciro, sipariş, ortalama sepet, kahve sayısı, müşteri, memnuniyet; şube sıralaması, en çok satanlar, yoğun saatler, müşteri yorumları. **Excel'e aktar (CSV)** muhasebe için sipariş listesini paylaşır/indirir. |
-| **Menü ve fiyatlar** | Ürün ekle, fiyat/ad/açıklama/kategori değiştir, fotoğraf yükle (telefonun galerisinden), menüde göster/gizle. |
-| **Süt seçenekleri ve kategoriler** | Süt fiyat farkları, süt seçeneğini ve kategorileri göster/gizle. |
-| **Şubeler ve çalışma saatleri** | Açık / yakında / kapalı, uygulamadan sipariş alma, hazırlık süresi, haftanın her günü için açılış-kapanış (gece yarısını geçebilir), ekip. |
+| **Menü ve fiyatlar** | Ürün ekle, fiyat/ad/açıklama/kategori değiştir, fotoğraf yükle (telefonun galerisinden), menüde göster/gizle; İngilizce ad, alerjen ve beslenme etiketleri, sunulan içecek seçenekleri. |
+| **Süt ve içecek seçenekleri** | Boy, ekstra shot, şurup, kafeinsiz, şeker gibi seçenekler ve süt fiyat farkları, İngilizce adları; yeni seçenek ekleme; kategorileri göster/gizle. |
+| **Şubeler ve çalışma saatleri** | Açık / yakında / kapalı, uygulamadan sipariş alma, hazırlık süresi, haftanın her günü için açılış-kapanış (gece yarısını geçebilir), masaya servis ve yazdırılabilir masa QR kodları, ekip. |
 | **Kampanya kartları** | Ana sayfadaki kartları ekle, düzenle, gizle, sil (renk önizlemeli). |
 | **Bildirim gönder** | Kampanya iletisine izin veren ve bildirimleri açık müşterilere (hepsine ya da bir şubenin müdavimlerine) duyuru. İki gönderim arasında en az 10 dakika. |
 | **Ayarlar** | Kaç kahvede bir hediye, ikinci kahve indirimi (%20/30/50), kendi bardağın indirimi, doğum günü kahvesi, “Seni özledik” bildirimi. |
@@ -139,6 +139,13 @@ Yönetici (`admin`, şirketin sahibi/genel müdürü) hesabıyla **Profil → İ
 - **Kim yaptı / müşteri ne dedi:** Geçmiş'te her siparişi kimin kabul ettiği, hazırladığı, teslim ettiği ve müşterinin 👍/👎 yorumu görünür.
 
 ### Müşteri tarafında
+
+- **İngilizce:** Profil → “Dil · Language” ile Türkçe/English. İlk açılışta telefonun dili seçilir. Menü, kampanyalar, sepet, ödeme, sipariş takibi, kahve kartı, hata mesajları ve sipariş bildirimleri İngilizce olur; ürün/kategori/kampanya/seçenek çevirileri yönetim panelinden düzenlenir (boşsa Türkçesi görünür). Yasal metinler Türkçe kalır; şube ve yönetim ekranları Türkçedir.
+- **İçecek seçenekleri:** boy, ekstra shot, şurup, kafeinsiz, Türk kahvesinde şeker (zorunlu). Fiyat farkları sunucuda hesaplanır; hangi ürünün hangi seçenekleri sunduğu ürün düzenleme ekranından, fiyat ve çeviriler “Süt ve içecek seçenekleri”nden yönetilir.
+- **Baristaya not:** sepette en fazla 140 karakter; tezgahta, tezgah ekranında, bildirimde ve geçmişte görünür.
+- **Masaya servis:** şube ayarlarında masa sayısı girilip “QR kodlarını hazırla” ile her masa için yazdırılabilir kart alınır (`cesmekahve://masa?sube=…&no=…`). Müşteri kodu telefon kamerasıyla ya da ana sayfadaki “Masadasın mı?” ile okutur; sipariş “Masa 5” etiketiyle gelir, ekip “Masaya götürüldü” ile kapatır. Masa siparişleri hemen hazırlanır (ileri saat yok), ödeme masada ya da kasada.
+- **Alerjen ve beslenme:** ürün sayfasında alerjenler (seçilen sütünkiler dahil) ve vegan/vejetaryen etiketleri; menüde Vegan · Vejetaryen · Glutensiz · Kuruyemişsiz süzgeci. Başlangıç alerjen bilgisi tahminidir; işletme tarif ve tedarikçi bilgisiyle ürün ürün kontrol etmelidir.
+- **Animasyonlar:** ekran geçişleri, dokunuşta yaylanan butonlar ve kartlar, listelerin süzülerek gelmesi, sepet rozetinin zıplaması, sipariş durumunda dolan çubuk ve nabız gibi atan aşama, kahve kartında tek tek beliren damgalar. Telefonda “Hareketi azalt” açıksa sade sürüm gösterilir.
 
 - **Daha sonra alacağım:** ödeme ekranında bugün ya da yarın için 15 dakikalık aralıklarla saat seçilir; şube kapalı ya da duraklatılmışken yalnızca bu seçenek açıktır.
 - **Her zamankinden / Favorilerin:** ana sayfada son siparişi tek dokunuşla tekrarlama ve ürün sayfasında ❤️ ile kaydedilen favoriler.

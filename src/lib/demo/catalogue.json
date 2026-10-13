@@ -9,7 +9,8 @@
    "prep_minutes": 6,
    "status": "open",
    "accepts_orders": true,
-   "sort": 0
+   "sort": 0,
+   "table_count": 0
   },
   {
    "id": "aydinli-yolu",
@@ -20,7 +21,8 @@
    "prep_minutes": 5,
    "status": "open",
    "accepts_orders": true,
-   "sort": 1
+   "sort": 1,
+   "table_count": 0
   },
   {
    "id": "marmara-forum",
@@ -31,7 +33,8 @@
    "prep_minutes": 8,
    "status": "open",
    "accepts_orders": true,
-   "sort": 2
+   "sort": 2,
+   "table_count": 0
   },
   {
    "id": "beylikduzu",
@@ -42,7 +45,8 @@
    "prep_minutes": 7,
    "status": "open",
    "accepts_orders": true,
-   "sort": 3
+   "sort": 3,
+   "table_count": 0
   },
   {
    "id": "umraniye",
@@ -53,7 +57,8 @@
    "prep_minutes": 6,
    "status": "open",
    "accepts_orders": true,
-   "sort": 4
+   "sort": 4,
+   "table_count": 0
   },
   {
    "id": "florya",
@@ -64,7 +69,8 @@
    "prep_minutes": 6,
    "status": "coming_soon",
    "accepts_orders": true,
-   "sort": 5
+   "sort": 5,
+   "table_count": 0
   },
   {
    "id": "izmit-merkez",
@@ -75,7 +81,8 @@
    "prep_minutes": 5,
    "status": "open",
    "accepts_orders": true,
-   "sort": 6
+   "sort": 6,
+   "table_count": 0
   },
   {
    "id": "41-burda",
@@ -86,7 +93,8 @@
    "prep_minutes": 7,
    "status": "open",
    "accepts_orders": true,
-   "sort": 7
+   "sort": 7,
+   "table_count": 0
   },
   {
    "id": "yahya-kaptan",
@@ -97,7 +105,8 @@
    "prep_minutes": 6,
    "status": "open",
    "accepts_orders": true,
-   "sort": 8
+   "sort": 8,
+   "table_count": 0
   },
   {
    "id": "basiskele",
@@ -108,7 +117,8 @@
    "prep_minutes": 5,
    "status": "open",
    "accepts_orders": true,
-   "sort": 9
+   "sort": 9,
+   "table_count": 0
   },
   {
    "id": "korfez",
@@ -119,7 +129,8 @@
    "prep_minutes": 6,
    "status": "open",
    "accepts_orders": true,
-   "sort": 10
+   "sort": 10,
+   "table_count": 12
   },
   {
    "id": "alacati",
@@ -130,7 +141,8 @@
    "prep_minutes": 6,
    "status": "open",
    "accepts_orders": true,
-   "sort": 11
+   "sort": 11,
+   "table_count": 12
   },
   {
    "id": "vega-ankara",
@@ -141,7 +153,8 @@
    "prep_minutes": 7,
    "status": "open",
    "accepts_orders": true,
-   "sort": 12
+   "sort": 12,
+   "table_count": 0
   },
   {
    "id": "markantalya",
@@ -152,7 +165,8 @@
    "prep_minutes": 8,
    "status": "open",
    "accepts_orders": true,
-   "sort": 13
+   "sort": 13,
+   "table_count": 0
   },
   {
    "id": "didim",
@@ -163,7 +177,8 @@
    "prep_minutes": 5,
    "status": "open",
    "accepts_orders": true,
-   "sort": 14
+   "sort": 14,
+   "table_count": 0
   },
   {
    "id": "vega-eskisehir",
@@ -174,7 +189,8 @@
    "prep_minutes": 6,
    "status": "coming_soon",
    "accepts_orders": true,
-   "sort": 15
+   "sort": 15,
+   "table_count": 0
   }
  ],
  "menu_categories": [
@@ -184,7 +200,9 @@
    "sort": 0,
    "blurb": "Espresso bazlı sıcak kahveler",
    "is_drink": true,
-   "is_active": true
+   "is_active": true,
+   "name_en": "Espresso Bar",
+   "blurb_en": "Hot espresso-based coffees"
   },
   {
    "id": "iced",
@@ -192,7 +210,9 @@
    "sort": 1,
    "blurb": "Buzlu espresso bazlı kahveler",
    "is_drink": true,
-   "is_active": true
+   "is_active": true,
+   "name_en": "Iced Espresso Bar",
+   "blurb_en": "Iced espresso-based coffees"
   },
   {
    "id": "brew",
@@ -200,7 +220,9 @@
    "sort": 2,
    "blurb": "Özel demleme kahveler",
    "is_drink": true,
-   "is_active": true
+   "is_active": true,
+   "name_en": "Brew Bar",
+   "blurb_en": "Speciality brewed coffees"
   },
   {
    "id": "frozen",
@@ -208,7 +230,9 @@
    "sort": 3,
    "blurb": "Buzla blend edilen soğuklar",
    "is_drink": true,
-   "is_active": true
+   "is_active": true,
+   "name_en": "Frappé & Frozen",
+   "blurb_en": "Blended with ice"
   },
   {
    "id": "tea",
@@ -216,7 +240,9 @@
    "sort": 4,
    "blurb": "Demlikte, taze demlenir",
    "is_drink": true,
-   "is_active": true
+   "is_active": true,
+   "name_en": "Teas",
+   "blurb_en": "Brewed fresh in a teapot"
   },
   {
    "id": "other",
@@ -224,7 +250,9 @@
    "sort": 5,
    "blurb": "Taze sıkılmış ve şişede",
    "is_drink": true,
-   "is_active": true
+   "is_active": true,
+   "name_en": "Other Drinks",
+   "blurb_en": "Freshly squeezed and bottled"
   },
   {
    "id": "croissant",
@@ -232,7 +260,9 @@
    "sort": 6,
    "blurb": "Her sabah fırından",
    "is_drink": false,
-   "is_active": true
+   "is_active": true,
+   "name_en": "Croissants",
+   "blurb_en": "Fresh from the oven every morning"
   },
   {
    "id": "dessert",
@@ -240,7 +270,9 @@
    "sort": 7,
    "blurb": "Kahvenin yanına",
    "is_drink": false,
-   "is_active": true
+   "is_active": true,
+   "name_en": "Desserts",
+   "blurb_en": "To go with your coffee"
   },
   {
    "id": "snack",
@@ -248,7 +280,9 @@
    "sort": 8,
    "blurb": "Hafif ve doyurucu",
    "is_drink": false,
-   "is_active": true
+   "is_active": true,
+   "name_en": "Snacks",
+   "blurb_en": "Light and filling"
   }
  ],
  "products": [
@@ -263,7 +297,13 @@
    "image_path": "menu/yaseminli-yesil-cay.webp",
    "category_id": "tea",
    "description": "Yasemin incileriyle harmanlanmış yeşil çay.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Jasmine Green Tea",
+   "description_en": "Green tea blended with jasmine pearls.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "iced-americano",
@@ -276,7 +316,13 @@
    "image_path": "menu/iced-americano.webp",
    "category_id": "iced",
    "description": "Double espresso ve buzlu su.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Iced Americano",
+   "description_en": "Double espresso over iced water.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "cheesecake",
@@ -289,7 +335,17 @@
    "image_path": "menu/tatli.webp",
    "category_id": "dessert",
    "description": "Yanık üst, kremsi iç.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "San Sebastián Cheesecake",
+   "description_en": "Burnt top, creamy centre.",
+   "allergens": [
+    "gluten",
+    "sut",
+    "yumurta"
+   ],
+   "diet": [
+    "vegetarian"
+   ]
   },
   {
    "id": "avokado",
@@ -302,7 +358,15 @@
    "image_path": "menu/atistirmalik.webp",
    "category_id": "snack",
    "description": "Ekşi mayalı ekmek, avokado ve roka.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Avocado Sandwich",
+   "description_en": "Sourdough bread with avocado and rocket.",
+   "allergens": [
+    "gluten"
+   ],
+   "diet": [
+    "vegetarian"
+   ]
   },
   {
    "id": "portakal",
@@ -315,7 +379,13 @@
    "image_path": "menu/portakal-suyu.webp",
    "category_id": "other",
    "description": "Taze sıkılmış portakal suyu.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Fresh Orange Juice",
+   "description_en": "Freshly squeezed orange juice.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "turk-kahvesi",
@@ -328,7 +398,13 @@
    "image_path": "menu/turk-kahvesi.webp",
    "category_id": "brew",
    "description": "Geleneksel yöntemle pişirilir.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Turkish Coffee",
+   "description_en": "Brewed the traditional way.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "kruvasan-tereyagli",
@@ -341,7 +417,17 @@
    "image_path": "menu/kruvasan.webp",
    "category_id": "croissant",
    "description": "Kat kat açılmış hamur, her sabah taze.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Butter Croissant",
+   "description_en": "Laminated layer by layer, fresh every morning.",
+   "allergens": [
+    "gluten",
+    "sut",
+    "yumurta"
+   ],
+   "diet": [
+    "vegetarian"
+   ]
   },
   {
    "id": "espresso",
@@ -354,7 +440,13 @@
    "image_path": "menu/espresso.webp",
    "category_id": "espresso",
    "description": "Single ya da double servis edilir.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Espresso",
+   "description_en": "Served single or double.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "frappe",
@@ -367,7 +459,16 @@
    "image_path": "menu/frappe.webp",
    "category_id": "frozen",
    "description": "Double espresso, süt ve buz.",
-   "has_milk_options": true
+   "has_milk_options": true,
+   "name_en": "Chocolate Frappé",
+   "description_en": "Double espresso, milk and ice.",
+   "allergens": [
+    "sut",
+    "soya"
+   ],
+   "diet": [
+    "vegetarian"
+   ]
   },
   {
    "id": "limonata",
@@ -380,7 +481,13 @@
    "image_path": "menu/naneli-limonata.webp",
    "category_id": "other",
    "description": "Ev yapımı, naneli.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Mint Lemonade",
+   "description_en": "Homemade, with fresh mint.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "hindi",
@@ -393,7 +500,14 @@
    "image_path": "menu/atistirmalik.webp",
    "category_id": "snack",
    "description": "Hindi füme ve kaşar, ekşi mayalı ekmekte.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Smoked Turkey Sandwich",
+   "description_en": "Smoked turkey and kashar cheese on sourdough.",
+   "allergens": [
+    "gluten",
+    "sut"
+   ],
+   "diet": []
   },
   {
    "id": "detoks",
@@ -406,7 +520,13 @@
    "image_path": "menu/detoks-beyaz-cay.webp",
    "category_id": "tea",
    "description": "Beyaz çay, ebegümeci, yasemin çiçeği ve portakal.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Detox White Tea",
+   "description_en": "White tea, mallow, jasmine flowers and orange.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "tiramisu",
@@ -419,7 +539,17 @@
    "image_path": "menu/tatli.webp",
    "category_id": "dessert",
    "description": "Espressoya batırılmış kedidili ve mascarpone.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Tiramisu",
+   "description_en": "Espresso-soaked ladyfingers and mascarpone.",
+   "allergens": [
+    "gluten",
+    "sut",
+    "yumurta"
+   ],
+   "diet": [
+    "vegetarian"
+   ]
   },
   {
    "id": "kruvasan-cikolatali",
@@ -432,7 +562,18 @@
    "image_path": "menu/kruvasan.webp",
    "category_id": "croissant",
    "description": "Belçika çikolatası dolgulu.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Chocolate Croissant",
+   "description_en": "Filled with Belgian chocolate.",
+   "allergens": [
+    "gluten",
+    "sut",
+    "yumurta",
+    "soya"
+   ],
+   "diet": [
+    "vegetarian"
+   ]
   },
   {
    "id": "cilek",
@@ -445,7 +586,13 @@
    "image_path": "menu/cilek-frozen.webp",
    "category_id": "frozen",
    "description": "Taze çilek ve buz.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Strawberry Frozen",
+   "description_en": "Fresh strawberries blended with ice.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "iced-latte",
@@ -458,7 +605,14 @@
    "image_path": "menu/iced-latte.webp",
    "category_id": "iced",
    "description": "Double espresso ve buzlu süt.",
-   "has_milk_options": true
+   "has_milk_options": true,
+   "name_en": "Iced Caffè Latte",
+   "description_en": "Double espresso and iced milk.",
+   "allergens": [],
+   "diet": [
+    "vegan_option",
+    "vegetarian"
+   ]
   },
   {
    "id": "macchiato",
@@ -471,7 +625,13 @@
    "image_path": "menu/espresso-macchiato.webp",
    "category_id": "espresso",
    "description": "Double espresso ve bir kaşık mikro köpük.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Espresso Macchiato",
+   "description_en": "Double espresso with a spoonful of microfoam.",
+   "allergens": [],
+   "diet": [
+    "vegetarian"
+   ]
   },
   {
    "id": "cold-brew",
@@ -484,7 +644,13 @@
    "image_path": "menu/cold-brew.webp",
    "category_id": "brew",
    "description": "Soğuk damlatma yöntemiyle demlenir.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Cold Brew",
+   "description_en": "Brewed slowly with cold water.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "nitro",
@@ -497,7 +663,13 @@
    "image_path": "menu/nitro-cold-brew.webp",
    "category_id": "brew",
    "description": "Azot gazıyla kadifemsi cold brew.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Nitro Cold Brew",
+   "description_en": "Velvety cold brew infused with nitrogen.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "americano",
@@ -510,7 +682,13 @@
    "image_path": "menu/americano.webp",
    "category_id": "espresso",
    "description": "Double espresso ve sıcak su.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Americano",
+   "description_en": "Double espresso and hot water.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "iced-mocha-white",
@@ -523,7 +701,16 @@
    "image_path": "menu/iced-mocha.webp",
    "category_id": "iced",
    "description": "Double espresso, Belçika beyaz çikolatası ve buzlu süt.",
-   "has_milk_options": true
+   "has_milk_options": true,
+   "name_en": "Iced Mocha, White Chocolate",
+   "description_en": "Double espresso, Belgian white chocolate and iced milk.",
+   "allergens": [
+    "sut",
+    "soya"
+   ],
+   "diet": [
+    "vegetarian"
+   ]
   },
   {
    "id": "karadut",
@@ -536,7 +723,13 @@
    "image_path": "menu/karadut-frozen.webp",
    "category_id": "frozen",
    "description": "Taze karadut ve buz.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Black Mulberry Frozen",
+   "description_en": "Fresh black mulberries blended with ice.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "ginger-orange",
@@ -549,7 +742,13 @@
    "image_path": "menu/ginger-orange.webp",
    "category_id": "tea",
    "description": "Beyaz çay, limon otu, zencefil ve kuru portakal.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Ginger Orange",
+   "description_en": "White tea, lemongrass, ginger and dried orange.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "karadut-suyu",
@@ -562,7 +761,13 @@
    "image_path": "menu/karadut-suyu.webp",
    "category_id": "other",
    "description": "Ev yapımı karadut suyu.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Black Mulberry Juice",
+   "description_en": "Homemade black mulberry juice.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "kruvasan-bademli",
@@ -575,7 +780,18 @@
    "image_path": "menu/kruvasan.webp",
    "category_id": "croissant",
    "description": "Badem kreması ve dilimlenmiş badem.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Almond Croissant",
+   "description_en": "Almond cream and sliced almonds.",
+   "allergens": [
+    "gluten",
+    "sut",
+    "yumurta",
+    "kuruyemis"
+   ],
+   "diet": [
+    "vegetarian"
+   ]
   },
   {
    "id": "brownie",
@@ -588,7 +804,19 @@
    "image_path": "menu/tatli.webp",
    "category_id": "dessert",
    "description": "Bol çikolatalı ve cevizli.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Brownie",
+   "description_en": "Rich chocolate with walnuts.",
+   "allergens": [
+    "gluten",
+    "sut",
+    "yumurta",
+    "kuruyemis",
+    "soya"
+   ],
+   "diet": [
+    "vegetarian"
+   ]
   },
   {
    "id": "mango",
@@ -601,7 +829,13 @@
    "image_path": "menu/mango-frozen.webp",
    "category_id": "frozen",
    "description": "Taze mango ve buz.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Mango Frozen",
+   "description_en": "Fresh mango blended with ice.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "kruvasan-kasarli",
@@ -614,7 +848,17 @@
    "image_path": "menu/kruvasan.webp",
    "category_id": "croissant",
    "description": "Kaşar peyniriyle, sıcak servis.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Cheese Croissant",
+   "description_en": "With kashar cheese, served warm.",
+   "allergens": [
+    "gluten",
+    "sut",
+    "yumurta"
+   ],
+   "diet": [
+    "vegetarian"
+   ]
   },
   {
    "id": "seftali-gazoz",
@@ -627,7 +871,13 @@
    "image_path": "menu/seftali-lavanta-gazoz.webp",
    "category_id": "other",
    "description": "Şişede, soğuk servis.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Peach Lavender Soda",
+   "description_en": "Bottled, served cold.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "iced-mocha-ruby",
@@ -640,7 +890,16 @@
    "image_path": "menu/iced-mocha-ruby.webp",
    "category_id": "iced",
    "description": "Double espresso, Belçika ruby çikolatası ve buzlu süt.",
-   "has_milk_options": true
+   "has_milk_options": true,
+   "name_en": "Iced Mocha, Ruby Chocolate",
+   "description_en": "Double espresso, Belgian ruby chocolate and iced milk.",
+   "allergens": [
+    "sut",
+    "soya"
+   ],
+   "diet": [
+    "vegetarian"
+   ]
   },
   {
    "id": "earl-grey",
@@ -653,7 +912,13 @@
    "image_path": "menu/earl-grey.webp",
    "category_id": "tea",
    "description": "Bergamot parçacıkları ve mavi çiçeklerle siyah çay.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Earl Grey",
+   "description_en": "Black tea with bergamot and blue cornflowers.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "cortado",
@@ -666,7 +931,14 @@
    "image_path": "menu/cortado.webp",
    "category_id": "espresso",
    "description": "Double espresso, iki katı mikro köpüklü süt.",
-   "has_milk_options": true
+   "has_milk_options": true,
+   "name_en": "Cortado",
+   "description_en": "Double espresso with twice as much microfoamed milk.",
+   "allergens": [],
+   "diet": [
+    "vegan_option",
+    "vegetarian"
+   ]
   },
   {
    "id": "bergamot",
@@ -679,7 +951,13 @@
    "image_path": "menu/bergamotlu-cay.webp",
    "category_id": "tea",
    "description": "Bergamot ve Karadeniz çayı.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Bergamot Tea",
+   "description_en": "Black Sea tea with bergamot.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "elma-gazoz",
@@ -692,7 +970,13 @@
    "image_path": "menu/elma-erik-gazoz.webp",
    "category_id": "other",
    "description": "Şişede, soğuk servis.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Apple Plum Soda",
+   "description_en": "Bottled, served cold.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "flat-white",
@@ -705,7 +989,14 @@
    "image_path": "menu/flat-white.webp",
    "category_id": "espresso",
    "description": "Double ristretto ve ipeksi mikro köpük.",
-   "has_milk_options": true
+   "has_milk_options": true,
+   "name_en": "Flat White",
+   "description_en": "Double ristretto with silky microfoam.",
+   "allergens": [],
+   "diet": [
+    "vegan_option",
+    "vegetarian"
+   ]
   },
   {
    "id": "rooibos",
@@ -718,7 +1009,13 @@
    "image_path": "menu/rooibos.webp",
    "category_id": "tea",
    "description": "Tropik kuru meyvelerle rooibos.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Fruity Rooibos",
+   "description_en": "Rooibos with tropical dried fruit.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "su",
@@ -731,7 +1028,13 @@
    "image_path": "menu/su.webp",
    "category_id": "other",
    "description": "Soğuk servis.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Water",
+   "description_en": "Served cold.",
+   "allergens": [],
+   "diet": [
+    "vegan"
+   ]
   },
   {
    "id": "cappuccino",
@@ -744,7 +1047,14 @@
    "image_path": "menu/cappuccino.webp",
    "category_id": "espresso",
    "description": "Double espresso ve bol köpüklü süt.",
-   "has_milk_options": true
+   "has_milk_options": true,
+   "name_en": "Cappuccino",
+   "description_en": "Double espresso with plenty of milk foam.",
+   "allergens": [],
+   "diet": [
+    "vegan_option",
+    "vegetarian"
+   ]
   },
   {
    "id": "latte",
@@ -757,7 +1067,14 @@
    "image_path": "menu/latte.webp",
    "category_id": "espresso",
    "description": "Double espresso ve mikro köpüklü süt.",
-   "has_milk_options": true
+   "has_milk_options": true,
+   "name_en": "Caffè Latte",
+   "description_en": "Double espresso and microfoamed milk.",
+   "allergens": [],
+   "diet": [
+    "vegan_option",
+    "vegetarian"
+   ]
   },
   {
    "id": "mocha-ruby",
@@ -770,7 +1087,16 @@
    "image_path": "menu/mocha.webp",
    "category_id": "espresso",
    "description": "Double espresso, Belçika ruby çikolatası ve süt.",
-   "has_milk_options": true
+   "has_milk_options": true,
+   "name_en": "Mocha, Ruby Chocolate",
+   "description_en": "Double espresso, Belgian ruby chocolate and milk.",
+   "allergens": [
+    "sut",
+    "soya"
+   ],
+   "diet": [
+    "vegetarian"
+   ]
   },
   {
    "id": "mocha-caramel",
@@ -783,7 +1109,16 @@
    "image_path": "menu/mocha.webp",
    "category_id": "espresso",
    "description": "Double espresso, Belçika karamel çikolatası ve süt.",
-   "has_milk_options": true
+   "has_milk_options": true,
+   "name_en": "Mocha, Caramel Chocolate",
+   "description_en": "Double espresso, Belgian caramel chocolate and milk.",
+   "allergens": [
+    "sut",
+    "soya"
+   ],
+   "diet": [
+    "vegetarian"
+   ]
   },
   {
    "id": "affogato",
@@ -796,7 +1131,16 @@
    "image_path": "menu/affogato.webp",
    "category_id": "espresso",
    "description": "Kremalı dondurmanın üzerine double espresso.",
-   "has_milk_options": false
+   "has_milk_options": false,
+   "name_en": "Affogato",
+   "description_en": "Double espresso poured over creamy ice cream.",
+   "allergens": [
+    "sut",
+    "yumurta"
+   ],
+   "diet": [
+    "vegetarian"
+   ]
   }
  ],
  "milk_options": [
@@ -807,7 +1151,11 @@
    "is_plant": false,
    "is_active": true,
    "is_default": true,
-   "extra_price": 0
+   "extra_price": 0,
+   "label_en": "Whole milk",
+   "allergens": [
+    "sut"
+   ]
   },
   {
    "id": "yagsiz",
@@ -816,7 +1164,11 @@
    "is_plant": false,
    "is_active": true,
    "is_default": false,
-   "extra_price": 0
+   "extra_price": 0,
+   "label_en": "Skimmed milk",
+   "allergens": [
+    "sut"
+   ]
   },
   {
    "id": "laktozsuz",
@@ -825,7 +1177,11 @@
    "is_plant": false,
    "is_active": true,
    "is_default": false,
-   "extra_price": 1000
+   "extra_price": 1000,
+   "label_en": "Lactose-free milk",
+   "allergens": [
+    "sut"
+   ]
   },
   {
    "id": "soya",
@@ -834,7 +1190,11 @@
    "is_plant": true,
    "is_active": true,
    "is_default": false,
-   "extra_price": 1500
+   "extra_price": 1500,
+   "label_en": "Soy milk",
+   "allergens": [
+    "soya"
+   ]
   },
   {
    "id": "badem",
@@ -843,7 +1203,11 @@
    "is_plant": true,
    "is_active": true,
    "is_default": false,
-   "extra_price": 1500
+   "extra_price": 1500,
+   "label_en": "Almond milk",
+   "allergens": [
+    "kuruyemis"
+   ]
   }
  ],
  "campaigns": [
@@ -856,7 +1220,10 @@
    "ends_at": null,
    "eyebrow": "Sepette otomatik",
    "is_active": true,
-   "starts_at": null
+   "starts_at": null,
+   "eyebrow_en": "Applied in the cart",
+   "title_en": "Second coffee 50% off",
+   "body_en": "The cheaper of every two coffees in your cart is half price."
   },
   {
    "id": "fresh",
@@ -867,7 +1234,10 @@
    "ends_at": null,
    "eyebrow": "Her sabah",
    "is_active": true,
-   "starts_at": null
+   "starts_at": null,
+   "eyebrow_en": "Every morning",
+   "title_en": "Croissants fresh from the oven",
+   "body_en": "Butter, chocolate, almond."
   },
   {
    "id": "loyalty",
@@ -878,7 +1248,10 @@
    "ends_at": null,
    "eyebrow": "Kahve kartı",
    "is_active": true,
-   "starts_at": null
+   "starts_at": null,
+   "eyebrow_en": "Coffee card",
+   "title_en": "Buy 10 coffees, get 1 free",
+   "body_en": "Every coffee you pay for earns a stamp."
   }
  ],
  "app_settings": {
@@ -893,5 +1266,366 @@
   "payment_timeout_min": 30,
   "second_coffee_active": true,
   "card_payments_enabled": true
- }
+ },
+ "option_groups": [
+  {
+   "id": "boy",
+   "name": "Boy",
+   "name_en": "Size",
+   "multi": false,
+   "required": false,
+   "none_label": "Standart",
+   "none_label_en": "Regular",
+   "is_active": true,
+   "sort": 0
+  },
+  {
+   "id": "ekstra",
+   "name": "Ekstra",
+   "name_en": "Extras",
+   "multi": true,
+   "required": false,
+   "none_label": null,
+   "none_label_en": null,
+   "is_active": true,
+   "sort": 1
+  },
+  {
+   "id": "surup",
+   "name": "Şurup",
+   "name_en": "Syrup",
+   "multi": false,
+   "required": false,
+   "none_label": "Şurupsuz",
+   "none_label_en": "No syrup",
+   "is_active": true,
+   "sort": 2
+  },
+  {
+   "id": "kafein",
+   "name": "Kahve çekirdeği",
+   "name_en": "Coffee beans",
+   "multi": false,
+   "required": false,
+   "none_label": "Normal",
+   "none_label_en": "Regular",
+   "is_active": true,
+   "sort": 3
+  },
+  {
+   "id": "seker",
+   "name": "Şeker",
+   "name_en": "Sugar",
+   "multi": false,
+   "required": true,
+   "none_label": null,
+   "none_label_en": null,
+   "is_active": true,
+   "sort": 4
+  }
+ ],
+ "option_values": [
+  {
+   "id": "buyuk",
+   "group_id": "boy",
+   "label": "Büyük",
+   "label_en": "Large",
+   "extra_price": 2000,
+   "is_default": false,
+   "is_active": true,
+   "sort": 0
+  },
+  {
+   "id": "ekstra-shot",
+   "group_id": "ekstra",
+   "label": "Ekstra shot",
+   "label_en": "Extra shot",
+   "extra_price": 2500,
+   "is_default": false,
+   "is_active": true,
+   "sort": 0
+  },
+  {
+   "id": "vanilya",
+   "group_id": "surup",
+   "label": "Vanilya",
+   "label_en": "Vanilla",
+   "extra_price": 1500,
+   "is_default": false,
+   "is_active": true,
+   "sort": 0
+  },
+  {
+   "id": "karamel",
+   "group_id": "surup",
+   "label": "Karamel",
+   "label_en": "Caramel",
+   "extra_price": 1500,
+   "is_default": false,
+   "is_active": true,
+   "sort": 1
+  },
+  {
+   "id": "findik",
+   "group_id": "surup",
+   "label": "Fındık",
+   "label_en": "Hazelnut",
+   "extra_price": 1500,
+   "is_default": false,
+   "is_active": true,
+   "sort": 2
+  },
+  {
+   "id": "kafeinsiz",
+   "group_id": "kafein",
+   "label": "Kafeinsiz",
+   "label_en": "Decaf",
+   "extra_price": 0,
+   "is_default": false,
+   "is_active": true,
+   "sort": 0
+  },
+  {
+   "id": "sade",
+   "group_id": "seker",
+   "label": "Sade",
+   "label_en": "No sugar",
+   "extra_price": 0,
+   "is_default": true,
+   "is_active": true,
+   "sort": 0
+  },
+  {
+   "id": "az-sekerli",
+   "group_id": "seker",
+   "label": "Az şekerli",
+   "label_en": "Little sugar",
+   "extra_price": 0,
+   "is_default": false,
+   "is_active": true,
+   "sort": 1
+  },
+  {
+   "id": "orta-sekerli",
+   "group_id": "seker",
+   "label": "Orta şekerli",
+   "label_en": "Medium sugar",
+   "extra_price": 0,
+   "is_default": false,
+   "is_active": true,
+   "sort": 2
+  },
+  {
+   "id": "sekerli",
+   "group_id": "seker",
+   "label": "Şekerli",
+   "label_en": "Sweet",
+   "extra_price": 0,
+   "is_default": false,
+   "is_active": true,
+   "sort": 3
+  }
+ ],
+ "product_option_groups": [
+  {
+   "product_id": "latte",
+   "group_id": "boy"
+  },
+  {
+   "product_id": "latte",
+   "group_id": "ekstra"
+  },
+  {
+   "product_id": "latte",
+   "group_id": "surup"
+  },
+  {
+   "product_id": "latte",
+   "group_id": "kafein"
+  },
+  {
+   "product_id": "cappuccino",
+   "group_id": "boy"
+  },
+  {
+   "product_id": "cappuccino",
+   "group_id": "ekstra"
+  },
+  {
+   "product_id": "cappuccino",
+   "group_id": "surup"
+  },
+  {
+   "product_id": "cappuccino",
+   "group_id": "kafein"
+  },
+  {
+   "product_id": "mocha-ruby",
+   "group_id": "boy"
+  },
+  {
+   "product_id": "mocha-ruby",
+   "group_id": "ekstra"
+  },
+  {
+   "product_id": "mocha-ruby",
+   "group_id": "surup"
+  },
+  {
+   "product_id": "mocha-ruby",
+   "group_id": "kafein"
+  },
+  {
+   "product_id": "mocha-caramel",
+   "group_id": "boy"
+  },
+  {
+   "product_id": "mocha-caramel",
+   "group_id": "ekstra"
+  },
+  {
+   "product_id": "mocha-caramel",
+   "group_id": "surup"
+  },
+  {
+   "product_id": "mocha-caramel",
+   "group_id": "kafein"
+  },
+  {
+   "product_id": "iced-latte",
+   "group_id": "boy"
+  },
+  {
+   "product_id": "iced-latte",
+   "group_id": "ekstra"
+  },
+  {
+   "product_id": "iced-latte",
+   "group_id": "surup"
+  },
+  {
+   "product_id": "iced-latte",
+   "group_id": "kafein"
+  },
+  {
+   "product_id": "iced-mocha-white",
+   "group_id": "boy"
+  },
+  {
+   "product_id": "iced-mocha-white",
+   "group_id": "ekstra"
+  },
+  {
+   "product_id": "iced-mocha-white",
+   "group_id": "surup"
+  },
+  {
+   "product_id": "iced-mocha-white",
+   "group_id": "kafein"
+  },
+  {
+   "product_id": "iced-mocha-ruby",
+   "group_id": "boy"
+  },
+  {
+   "product_id": "iced-mocha-ruby",
+   "group_id": "ekstra"
+  },
+  {
+   "product_id": "iced-mocha-ruby",
+   "group_id": "surup"
+  },
+  {
+   "product_id": "iced-mocha-ruby",
+   "group_id": "kafein"
+  },
+  {
+   "product_id": "americano",
+   "group_id": "boy"
+  },
+  {
+   "product_id": "americano",
+   "group_id": "ekstra"
+  },
+  {
+   "product_id": "americano",
+   "group_id": "surup"
+  },
+  {
+   "product_id": "americano",
+   "group_id": "kafein"
+  },
+  {
+   "product_id": "iced-americano",
+   "group_id": "boy"
+  },
+  {
+   "product_id": "iced-americano",
+   "group_id": "ekstra"
+  },
+  {
+   "product_id": "iced-americano",
+   "group_id": "surup"
+  },
+  {
+   "product_id": "iced-americano",
+   "group_id": "kafein"
+  },
+  {
+   "product_id": "flat-white",
+   "group_id": "ekstra"
+  },
+  {
+   "product_id": "flat-white",
+   "group_id": "kafein"
+  },
+  {
+   "product_id": "cortado",
+   "group_id": "ekstra"
+  },
+  {
+   "product_id": "cortado",
+   "group_id": "kafein"
+  },
+  {
+   "product_id": "macchiato",
+   "group_id": "ekstra"
+  },
+  {
+   "product_id": "macchiato",
+   "group_id": "kafein"
+  },
+  {
+   "product_id": "espresso",
+   "group_id": "ekstra"
+  },
+  {
+   "product_id": "espresso",
+   "group_id": "kafein"
+  },
+  {
+   "product_id": "frappe",
+   "group_id": "boy"
+  },
+  {
+   "product_id": "frappe",
+   "group_id": "ekstra"
+  },
+  {
+   "product_id": "frappe",
+   "group_id": "surup"
+  },
+  {
+   "product_id": "cold-brew",
+   "group_id": "boy"
+  },
+  {
+   "product_id": "cold-brew",
+   "group_id": "surup"
+  },
+  {
+   "product_id": "turk-kahvesi",
+   "group_id": "seker"
+  }
+ ]
 }

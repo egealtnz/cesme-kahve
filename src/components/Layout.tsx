@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react-native';
 import { Txt } from './Txt';
 import { color, radius, shadow, space } from '@/theme/tokens';
+import { L } from '@/lib/i18n';
 
 export function Logo({ height = 44 }: { height?: number }) {
   return (
@@ -20,14 +21,14 @@ export function Logo({ height = 44 }: { height?: number }) {
 }
 
 /** Header row with the logo centred; optional back button on the left and an action on the right. */
-export function TopBar({ back, backLabel = 'Geri', right }: { back?: boolean | (() => void); backLabel?: string; right?: ReactNode }) {
+export function TopBar({ back, backLabel, right }: { back?: boolean | (() => void); backLabel?: string; right?: ReactNode }) {
   return (
     <View style={styles.topBar}>
       <View style={styles.topSide}>
         {back ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={backLabel}
+            accessibilityLabel={backLabel ?? L('Geri', 'Back')}
             onPress={typeof back === 'function' ? back : () => (router.canGoBack() ? router.back() : router.replace('/'))}
             style={({ pressed }) => [styles.iconBtn, pressed && { backgroundColor: color.surfaceMuted }]}
           >

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { Redirect, router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { CreditCard, Gift, Leaf, Lock, MapPin, Percent, Recycle, Wallet } from 'lucide-react-native';
+import { CreditCard, Gift, Leaf, Lock, MapPin, MessageSquare, Percent, Recycle, Utensils, Wallet } from 'lucide-react-native';
 import { Txt } from '@/components/Txt';
 import { Button } from '@/components/Button';
 import { OptionRow } from '@/components/Controls';
@@ -18,6 +18,9 @@ import { useAuth } from '@/state/auth';
 import { useCart } from '@/state/cart';
 import { color, space } from '@/theme/tokens';
 import { DemoNote } from '@/components/Demo';
+import { FadeIn } from '@/components/Motion';
+import { itemExtrasFromCart, productName } from '@/lib/display';
+import { L } from '@/lib/i18n';
 
 export default function CheckoutConfirm() {
   const { data: cat } = useCatalogue();
@@ -39,7 +42,8 @@ export default function CheckoutConfirm() {
     if (!cat) return null;
     const lines = cart.lines.flatMap((l) => {
       const product = cat.productById.get(l.productId);
-      return product ? [{ key: l.key, product, milk: l.milkId ? cat.milkById.get(l.milkId) ?? null : null, qty: l.qty }] : [];
+      const options = (l.options ?? []).flatMap((id) => cat.valueById.get(id) ?? []);
+      return product ? [{ key: l.key, product, milk: l.milkId ? cat.milkById.get(l.milkId) ?? null : null, options, qty: l.qty }] : [];
     });
     return priceCart(lines, { useRewards: Math.min(cart.useRewards, rewardCount), ownCup: cart.ownCup && cat.settings.own_cup_discount > 0, settings: cat.settings, drinkCategories: cat.drinkCategories });
   }, [cat, cart.lines, cart.useRewards, cart.ownCup, rewardCount]);
@@ -50,26 +54,32 @@ export default function CheckoutConfirm() {
   if (!totals || !cat) return <Screen><TopBar back /></Screen>;
 
   const st = branchState(branch);
-  if (!st.orderable) return <Redirect href="/checkout/branch" />;
+  const atTable = !!cart.table;
+  if (!st.orderable && !atTable) return <Redirect href="/checkout/branch" />;
   // Branch closed or paused right now: an order for later is the only option (first free time preselected).
-  const pickup = pickupAt ?? (st.orderNow ? null : pickupSlots(branch)[0]?.at.toISOString() ?? null);
-  const needsTime = !st.orderNow && !pickup;
+  // At a table it is always "now".
+  const pickup = atTable ? null : pickupAt ?? (st.orderNow ? null : pickupSlots(branch)[0]?.at.toISOString() ?? null);
+  const needsTime = !atTable && !st.orderNow && !pickup;
+  const tableBlocked = atTable && !st.orderNow;
   const free = totals.total === 0;
   const effective: PaymentMethod = free || !cardsOn ? 'store' : method;
 
   const submit = async () => {
-    if (needsTime) { setError('Teslim alma saatini seç.'); return; }
+    if (needsTime) { setError(L('Teslim alma saatini seç.', 'Choose a pickup time.')); return; }
+    if (tableBlocked) { setError(L('Şube şu an sipariş almıyor. Biraz sonra tekrar dene.', 'The branch is not taking orders right now. Try again shortly.')); return; }
     setError(null);
     setBusy('placing');
     try {
       const order = await placeOrder({
         branchId: branch.id,
-        items: cart.lines.map((l) => ({ product_id: l.productId, milk_id: l.milkId, quantity: l.qty })),
+        items: cart.lines.map((l) => ({ product_id: l.productId, milk_id: l.milkId, quantity: l.qty, options: l.options ?? [] })),
         paymentMethod: effective,
         useRewards: Math.min(cart.useRewards, totals.coffees, rewardCount),
         eco: cart.eco,
         ownCup: cart.ownCup && (cat?.settings.own_cup_discount ?? 0) > 0,
         pickupAt: pickup,
+        table: cart.table,
+        note: cart.note,
       });
       qc.invalidateQueries({ queryKey: ['rewards'] });
 
@@ -108,67 +118,88 @@ export default function CheckoutConfirm() {
         <View style={{ gap: space[2] }}>
           {error ? <Txt variant="bodySm" color="error" accessibilityLiveRegion="polite">{error}</Txt> : null}
           <Button
-            label={busy === 'placing' ? 'Sipariş oluşturuluyor…' : busy === 'paying' ? 'Ödeme sayfası açılıyor…' : busy === 'checking' ? 'Ödeme kontrol ediliyor…'
-              : effective === 'card' ? `${tl(totals.total)} öde` : `Siparişi onayla · ${tl(totals.total)}`}
+            label={busy === 'placing' ? L('Sipariş oluşturuluyor…', 'Placing your order…') : busy === 'paying' ? L('Ödeme sayfası açılıyor…', 'Opening the payment page…') : busy === 'checking' ? L('Ödeme kontrol ediliyor…', 'Checking the payment…')
+              : effective === 'card' ? L(`${tl(totals.total)} öde`, `Pay ${tl(totals.total)}`) : L(`Siparişi onayla · ${tl(totals.total)}`, `Place order · ${tl(totals.total)}`)}
+            disabled={tableBlocked}
             icon={effective === 'card' ? Lock : undefined}
             loading={!!busy}
             onPress={submit}
           />
           <Txt variant="caption" color="inkMuted" center>
-            Siparişi onaylayarak{' '}
-            <Txt variant="caption" color="ink" style={{ textDecorationLine: 'underline' }} onPress={() => router.push('/legal/on-bilgilendirme')}>Ön Bilgilendirme Formu</Txt>
-            {' '}ve{' '}
-            <Txt variant="caption" color="ink" style={{ textDecorationLine: 'underline' }} onPress={() => router.push('/legal/mesafeli-satis')}>Mesafeli Satış Sözleşmesi</Txt>
-            ’ni kabul edersin.
+            {L('Siparişi onaylayarak', 'By placing the order you accept the')}{' '}
+            <Txt variant="caption" color="ink" style={{ textDecorationLine: 'underline' }} onPress={() => router.push('/legal/on-bilgilendirme')}>{L('Ön Bilgilendirme Formu', 'Pre-information Form')}</Txt>
+            {' '}{L('ve', 'and the')}{' '}
+            <Txt variant="caption" color="ink" style={{ textDecorationLine: 'underline' }} onPress={() => router.push('/legal/mesafeli-satis')}>{L('Mesafeli Satış Sözleşmesi', 'Distance Sales Agreement')}</Txt>
+            {L('’ni kabul edersin.', '.')}
           </Txt>
         </View>
       }
     >
       <TopBar back />
-      <Txt variant="overline" color="secondaryInk" style={{ marginTop: space[5] }}>Son adım</Txt>
-      <Txt variant="h1" accessibilityRole="header" style={{ marginTop: 4 }}>Ödeme</Txt>
+      <Txt variant="overline" color="secondaryInk" style={{ marginTop: space[5] }}>{L('Son adım', 'Last step')}</Txt>
+      <Txt variant="h1" accessibilityRole="header" style={{ marginTop: 4 }}>{L('Ödeme', 'Checkout')}</Txt>
 
-      <Card tone="soft" style={{ marginTop: space[6], flexDirection: 'row', gap: space[3], alignItems: 'center' }}>
-        <MapPin size={20} color={color.ink} strokeWidth={1.75} />
-        <View style={{ flex: 1 }}>
-          <Txt variant="caption">Teslim alınacak şube</Txt>
-          <Txt variant="body" style={{ fontFamily: 'DMSans-SemiBold' }}>{branch.name}</Txt>
-          <Txt variant="caption">{pickup ? `Teslim alma: ${pickupLabel(pickup)}` : st.orderNow ? `Yaklaşık ${st.waitMinutes} dakikada hazır` : st.label}</Txt>
-        </View>
-        <Button label="Değiştir" variant="tertiary" size="sm" onPress={() => router.back()} />
-      </Card>
+      {atTable ? (
+        <FadeIn>
+          <Card tone="primary" style={{ marginTop: space[6], flexDirection: 'row', gap: space[3], alignItems: 'center' }}>
+            <Utensils size={20} color={color.onPrimary} strokeWidth={1.75} />
+            <View style={{ flex: 1 }}>
+              <Txt variant="caption" color="onPrimary">{L('Masaya servis', 'Table service')} · {branch.name}</Txt>
+              <Txt variant="body" color="onPrimary" style={{ fontFamily: 'DMSans-SemiBold' }}>{L(`Masa ${cart.table}`, `Table ${cart.table}`)}</Txt>
+              <Txt variant="caption" color="onPrimary">
+                {st.orderNow ? L(`Yaklaşık ${st.waitMinutes} dakikada masanda`, `At your table in about ${st.waitMinutes} minutes`) : st.label}
+              </Txt>
+            </View>
+          </Card>
+        </FadeIn>
+      ) : (
+        <>
+          <FadeIn>
+            <Card tone="soft" style={{ marginTop: space[6], flexDirection: 'row', gap: space[3], alignItems: 'center' }}>
+              <MapPin size={20} color={color.ink} strokeWidth={1.75} />
+              <View style={{ flex: 1 }}>
+                <Txt variant="caption">{L('Teslim alınacak şube', 'Pick up at')}</Txt>
+                <Txt variant="body" style={{ fontFamily: 'DMSans-SemiBold' }}>{branch.name}</Txt>
+                <Txt variant="caption">{pickup ? L(`Teslim alma: ${pickupLabel(pickup)}`, `Pickup: ${pickupLabel(pickup)}`) : st.orderNow ? L(`Yaklaşık ${st.waitMinutes} dakikada hazır`, `Ready in about ${st.waitMinutes} minutes`) : st.label}</Txt>
+              </View>
+              <Button label={L('Değiştir', 'Change')} variant="tertiary" size="sm" onPress={() => router.back()} />
+            </Card>
+          </FadeIn>
 
-      <Txt variant="h6" accessibilityRole="header" style={{ marginTop: space[6], marginBottom: space[3] }}>Ne zaman alacaksın?</Txt>
-      <PickupPicker branch={branch} value={pickup} onChange={setPickupAt} />
+          <Txt variant="h6" accessibilityRole="header" style={{ marginTop: space[6], marginBottom: space[3] }}>{L('Ne zaman alacaksın?', 'When will you pick it up?')}</Txt>
+          <PickupPicker branch={branch} value={pickup} onChange={setPickupAt} />
+        </>
+      )}
 
-      <Txt variant="h6" accessibilityRole="header" style={{ marginTop: space[6], marginBottom: space[3] }}>Siparişin</Txt>
+      <Txt variant="h6" accessibilityRole="header" style={{ marginTop: space[6], marginBottom: space[3] }}>{L('Siparişin', 'Your order')}</Txt>
       <Card style={{ gap: space[2] }}>
         {totals.lines.map((l) => (
           <View key={l.key} style={{ flexDirection: 'row', gap: space[2] }}>
             <Txt variant="body" style={{ width: 28, fontVariant: ['tabular-nums'] }}>{l.qty}×</Txt>
             <View style={{ flex: 1 }}>
-              <Txt variant="body">{l.product.name}</Txt>
-              {l.milk ? <Txt variant="caption" color="inkMuted">{l.milk.label}</Txt> : null}
+              <Txt variant="body">{productName(l.product)}</Txt>
+              {itemExtrasFromCart(l.milk, l.options) ? <Txt variant="caption" color="inkMuted">{itemExtrasFromCart(l.milk, l.options)}</Txt> : null}
             </View>
             <Txt variant="body" style={{ fontVariant: ['tabular-nums'] }}>{tl(l.unit * l.qty)}</Txt>
           </View>
         ))}
         <Divider />
-        <Line icon={cart.eco ? Leaf : undefined} label={cart.eco ? 'Çevre dostu ambalaj' : 'Standart ambalaj'} />
-        {totals.reward > 0 ? <Line icon={Gift} label={`Hediye kahve${totals.freeCount > 1 ? ` ×${totals.freeCount}` : ''}`} value={`−${tl(totals.reward)}`} good /> : null}
-        {totals.campaign > 0 ? <Line icon={Percent} label={`İkinci kahve %${cat.settings.second_coffee_pct}`} value={`−${tl(totals.campaign)}`} good /> : null}
-        {totals.cup > 0 ? <Line icon={Recycle} label="Kendi bardağın" value={`−${tl(totals.cup)}`} good /> : null}
+        {cart.note.trim() ? <Line icon={MessageSquare} label={`${L('Not', 'Note')}: “${cart.note.trim()}”`} /> : null}
+        {atTable ? null : <Line icon={cart.eco ? Leaf : undefined} label={cart.eco ? L('Çevre dostu ambalaj', 'Eco-friendly packaging') : L('Standart ambalaj', 'Standard packaging')} />}
+        {totals.reward > 0 ? <Line icon={Gift} label={`${L('Hediye kahve', 'Free coffee')}${totals.freeCount > 1 ? ` ×${totals.freeCount}` : ''}`} value={`−${tl(totals.reward)}`} good /> : null}
+        {totals.campaign > 0 ? <Line icon={Percent} label={L(`İkinci kahve %${cat.settings.second_coffee_pct}`, `Second coffee ${cat.settings.second_coffee_pct}% off`)} value={`−${tl(totals.campaign)}`} good /> : null}
+        {totals.cup > 0 && !atTable ? <Line icon={Recycle} label={L('Kendi bardağın', 'Own cup')} value={`−${tl(totals.cup)}`} good /> : null}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: space[1] }}>
-          <Txt variant="h5">Toplam</Txt>
+          <Txt variant="h5">{L('Toplam', 'Total')}</Txt>
           <Txt variant="h3" style={{ fontVariant: ['tabular-nums'] }}>{tl(totals.total)}</Txt>
         </View>
       </Card>
 
-      <Txt variant="h6" accessibilityRole="header" style={{ marginTop: space[6], marginBottom: space[3] }}>Ödeme yöntemi</Txt>
+      <Txt variant="h6" accessibilityRole="header" style={{ marginTop: space[6], marginBottom: space[3] }}>{L('Ödeme yöntemi', 'Payment')}</Txt>
       {free ? (
         <Card tone="eco" style={{ flexDirection: 'row', gap: space[3], alignItems: 'center' }}>
           <Gift size={20} color={color.success} strokeWidth={1.75} />
-          <Txt variant="bodySm" style={{ flex: 1 }}>Hediye kahvenle ödenecek tutar kalmadı.</Txt>
+          <Txt variant="bodySm" style={{ flex: 1 }}>{L('Hediye kahvenle ödenecek tutar kalmadı.', 'Your free coffee covers everything.')}</Txt>
         </Card>
       ) : (
         <View style={{ gap: space[2] }} accessibilityRole="radiogroup">
@@ -178,13 +209,15 @@ export default function CheckoutConfirm() {
               onPress={() => setMethod('card')}
               disabled={!hasPhone}
               icon={CreditCard}
-              title="Kartla öde"
-              body={hasPhone ? 'Kredi veya banka kartı · iyzico güvencesiyle' : 'Kartla ödeme için hesabına cep telefonu ekle.'}
+              title={L('Kartla öde', 'Pay by card')}
+              body={hasPhone ? L('Kredi veya banka kartı · iyzico güvencesiyle', 'Credit or debit card · secured by iyzico') : L('Kartla ödeme için hesabına cep telefonu ekle.', 'Add a mobile number to your account to pay by card.')}
             />
           ) : null}
-          {effective === 'card' ? <DemoNote>Önizlemede gerçek ödeme alınmaz; kartla ödeme otomatik onaylanır.</DemoNote> : null}
-          <OptionRow selected={effective === 'store'} onPress={() => setMethod('store')} icon={Wallet} title="Şubede öde" body="Teslim alırken kasada nakit ya da kartla öde" />
-          {cardsOn && !hasPhone ? <Button label="Telefon ekle" variant="tertiary" size="sm" style={{ alignSelf: 'flex-start' }} onPress={() => router.push('/account/edit')} /> : null}
+          {effective === 'card' ? <DemoNote>{L('Önizlemede gerçek ödeme alınmaz; kartla ödeme otomatik onaylanır.', 'No real payment in the preview; card payments are approved automatically.')}</DemoNote> : null}
+          <OptionRow selected={effective === 'store'} onPress={() => setMethod('store')} icon={Wallet}
+            title={atTable ? L('Masada ya da kasada öde', 'Pay at the table or the counter') : L('Şubede öde', 'Pay at the branch')}
+            body={atTable ? L('Nakit ya da kartla', 'Cash or card') : L('Teslim alırken kasada nakit ya da kartla öde', 'Pay cash or card at the counter when you pick up')} />
+          {cardsOn && !hasPhone ? <Button label={L('Telefon ekle', 'Add phone')} variant="tertiary" size="sm" style={{ alignSelf: 'flex-start' }} onPress={() => router.push('/account/edit')} /> : null}
         </View>
       )}
     </Screen>

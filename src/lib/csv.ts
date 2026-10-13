@@ -65,5 +65,5 @@ export async function shareTextFile(name: string, text: string, mimeType = 'text
   if (file.exists) file.delete();
   file.create();
   file.write(text);
-  await Sharing.shareAsync(file.uri, { mimeType, dialogTitle: name, UTI: 'public.comma-separated-values-text' });
+  await Sharing.shareAsync(file.uri, { mimeType, dialogTitle: name, UTI: mimeType === 'text/html' ? 'public.html' : 'public.comma-separated-values-text' });
 }

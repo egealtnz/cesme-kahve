@@ -35,15 +35,23 @@ async function notify(userId: string, orderId: string, orderNo: number, status: 
   const db = adminClient();
   const { data: tokens } = await db.from('push_tokens').select('token').eq('user_id', userId);
   if (!tokens?.length) return;
-  const { data: o } = await db.from('orders').select('branch:branches(name)').eq('id', orderId).single();
+  const { data: o } = await db.from('orders').select('table_label, branch:branches(name)').eq('id', orderId).single();
+  const { data: p } = await db.from('profiles').select('locale').eq('id', userId).maybeSingle();
   // deno-lint-ignore no-explicit-any
   const branchName = (o?.branch as any)?.name ?? '';
+  const table = (o?.table_label as string | null) ?? null;
+  const en = p?.locale === 'en';
   const ready = status === 'ready';
+  const title = ready ? (en ? 'Your order is ready ☕' : 'Siparişin hazır ☕') : (en ? 'Your order was cancelled' : 'Siparişin iptal edildi');
+  const text = ready
+    ? table
+      ? (en ? `#${orderNo} is on its way to table ${table}. Enjoy!` : `#${orderNo} masana geliyor (Masa ${table}). Afiyet olsun!`)
+      : (en ? `#${orderNo} is waiting for you at ${branchName}. Enjoy!` : `#${orderNo} ${branchName} şubesinde seni bekliyor. Afiyet olsun!`)
+    : (en ? `Order #${orderNo} was cancelled by the branch.` : `#${orderNo} numaralı siparişin şube tarafından iptal edildi.`);
   await sendPush(db, tokens.map(({ token }) => ({
     to: token,
-    title: ready ? 'Siparişin hazır ☕' : 'Siparişin iptal edildi',
-    body: ready ? `#${orderNo} ${branchName} şubesinde seni bekliyor. Afiyet olsun!`
-                : `#${orderNo} numaralı siparişin şube tarafından iptal edildi.`,
+    title,
+    body: text,
     data: { orderId, url: `cesmekahve://siparis/${orderId}` },
     channelId: 'orders',
     priority: 'high',

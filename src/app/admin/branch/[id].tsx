@@ -3,8 +3,11 @@ import { useState } from 'react';
 import { StyleSheet, Switch, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { Clock, ShoppingBag, Users } from 'lucide-react-native';
+import { Clock, Printer, ShoppingBag, Users, Utensils } from 'lucide-react-native';
 import { Txt } from '@/components/Txt';
+import { Field } from '@/components/Field';
+import { shareTextFile } from '@/lib/csv';
+import { tableSheetHtml } from '@/lib/tableSheet';
 import { Button } from '@/components/Button';
 import { ToggleRow } from '@/components/Controls';
 import { Card, Divider, Screen, TopBar } from '@/components/Layout';
@@ -35,6 +38,8 @@ function BranchForm({ branch }: { branch: Branch }) {
   const [status, setStatus] = useState(branch.status);
   const [accepts, setAccepts] = useState(branch.accepts_orders);
   const [prep, setPrep] = useState(branch.prep_minutes);
+  const [tables, setTables] = useState(branch.table_count ?? 0);
+  const [tableText, setTableText] = useState(String(branch.table_count || 20));
   const [limited, setLimited] = useState(!!branch.opening_hours);
   const [hours, setHours] = useState<Record<Day, { open: boolean; from: string; to: string }>>(() => {
     const h = branch.opening_hours ?? {};
@@ -61,7 +66,7 @@ function BranchForm({ branch }: { branch: Branch }) {
     setError(null);
     setSaving(true);
     try {
-      await saveBranch(branch.id, { status, accepts_orders: accepts, prep_minutes: prep, opening_hours: opening });
+      await saveBranch(branch.id, { status, accepts_orders: accepts, prep_minutes: prep, opening_hours: opening, table_count: tables });
       await Promise.all([qc.invalidateQueries({ queryKey: ['branches-live'] }), qc.invalidateQueries({ queryKey: ['catalogue'] })]);
       toast('Şube kaydedildi.');
       router.back();
@@ -118,6 +123,25 @@ function BranchForm({ branch }: { branch: Branch }) {
             ))}
             <Button label="Pazartesi saatlerini tüm günlere uygula" variant="tertiary" size="sm" onPress={copyMonday} style={{ alignSelf: 'flex-start' }} />
             <Txt variant="caption" color="inkMuted">Gece yarısından sonra kapanıyorsa kapanışı ertesi günün saatiyle yaz (ör. 08:00 – 01:00).</Txt>
+          </>
+        ) : null}
+      </Card>
+
+      <Txt variant="h5" accessibilityRole="header" style={{ marginTop: space[6], marginBottom: space[2] }}>Masaya servis</Txt>
+      <Card style={{ gap: space[3] }}>
+        <ToggleRow icon={Utensils} tone="soft" title="Masadan sipariş al"
+          body={tables ? `Masalardaki QR kodla sipariş verilir; ekip siparişi masaya götürür (${tables} masa).` : 'Açınca her masaya bir QR kod konur; müşteri oturduğu yerden sipariş verir.'}
+          value={tables > 0} onChange={(v) => setTables(v ? Math.max(1, Math.min(200, Number(tableText) || 20)) : 0)} />
+        {tables > 0 ? (
+          <>
+            <Field label="Masa sayısı" value={tableText} keyboardType="number-pad" maxLength={3}
+              onChangeText={(t) => { const d = t.replace(/\D/g, '').slice(0, 3); setTableText(d); const n = Number(d); if (n >= 1 && n <= 200) setTables(n); }}
+              hint="1 ile 200 arası. Değiştirince kaydetmeyi unutma." />
+            <Button label={`${tables} masa için QR kodlarını hazırla`} icon={Printer} variant="secondary" size="md"
+              onPress={() => shareTextFile(`masa-qr-${branch.id}.html`, tableSheetHtml(branch, tables), 'text/html').catch((e) => toast(errorMessage(e)))} />
+            <Txt variant="caption" color="inkMuted">
+              Dosyayı bilgisayarda açıp yazdır; her sayfada 6 masa kartı olur. Kodlar Çeşme Kahve uygulamasını açar; müşterinin uygulamayı yüklemiş olması gerekir.
+            </Txt>
           </>
         ) : null}
       </Card>

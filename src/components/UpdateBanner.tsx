@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RefreshCw } from 'lucide-react-native';
 import { Txt } from './Txt';
 import { color, radius, space } from '@/theme/tokens';
+import { L } from '@/lib/i18n';
 
 const enabled = Platform.OS !== 'web' && !__DEV__ && Updates.isEnabled;
 
@@ -40,11 +41,11 @@ function PendingUpdate() {
   if (!isUpdatePending) return null;
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { bottom: insets.bottom + 72 }]}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Yeni sürüm hazır. Yenilemek için dokun."
+      <Pressable accessibilityRole="button" accessibilityLabel={L('Yeni sürüm hazır. Yenilemek için dokun.', 'A new version is ready. Tap to reload.')}
         onPress={() => { Updates.reloadAsync().catch(() => undefined); }} style={styles.banner}>
         <RefreshCw size={18} color={color.onPrimary} strokeWidth={2} />
-        <Txt variant="label" color="onPrimary" style={{ flex: 1 }}>Yeni sürüm hazır</Txt>
-        <Txt variant="label" color="onPrimary" style={{ textDecorationLine: 'underline' }}>Yenile</Txt>
+        <Txt variant="label" color="onPrimary" style={{ flex: 1 }}>{L('Yeni sürüm hazır', 'A new version is ready')}</Txt>
+        <Txt variant="label" color="onPrimary" style={{ textDecorationLine: 'underline' }}>{L('Yenile', 'Reload')}</Txt>
       </Pressable>
     </View>
   );

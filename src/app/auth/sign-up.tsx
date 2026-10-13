@@ -13,6 +13,7 @@ import { formatPhone } from '@/lib/format';
 import { goNext } from '@/lib/nav';
 import { useCatalogue } from '@/lib/api';
 import { color, space } from '@/theme/tokens';
+import { L } from '@/lib/i18n';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const LETTER = /[A-Za-zÇĞİÖŞÜçğıöşü]/;
@@ -21,13 +22,13 @@ type Values = { firstName: string; lastName: string; email: string; phone: strin
 
 function validate(v: Values) {
   const e: Partial<Record<keyof Values, string>> = {};
-  if (v.firstName.trim().length < 2) e.firstName = 'Adını yaz.';
-  if (v.lastName.trim().length < 2) e.lastName = 'Soyadını yaz.';
-  if (!EMAIL_RE.test(v.email.trim())) e.email = 'Geçerli bir e-posta adresi yaz, örneğin ad@ornek.com.';
-  if (!/^5\d{9}$/.test(v.phone)) e.phone = '5 ile başlayan 10 haneli cep numaranı yaz.';
-  if (v.password.length < 8 || !LETTER.test(v.password) || !/\d/.test(v.password)) e.password = 'Şifren en az 8 karakter olmalı, harf ve rakam içermeli.';
-  if (v.birthday && !/^\d{2}\.\d{2}\.\d{4}$/.test(v.birthday)) e.birthday = 'GG.AA.YYYY biçiminde yaz, örneğin 14.03.1995.';
-  if (!v.terms) e.terms = 'Devam etmek için üyelik koşullarını onayla.';
+  if (v.firstName.trim().length < 2) e.firstName = L('Adını yaz.', 'Enter your first name.');
+  if (v.lastName.trim().length < 2) e.lastName = L('Soyadını yaz.', 'Enter your last name.');
+  if (!EMAIL_RE.test(v.email.trim())) e.email = L('Geçerli bir e-posta adresi yaz, örneğin ad@ornek.com.', 'Enter a valid email address, e.g. name@example.com.');
+  if (v.phone && !/^5\d{9}$/.test(v.phone)) e.phone = L('5 ile başlayan 10 haneli cep numaranı yaz.', 'Enter a 10-digit Turkish mobile number starting with 5, or leave it empty.');
+  if (v.password.length < 8 || !LETTER.test(v.password) || !/\d/.test(v.password)) e.password = L('Şifren en az 8 karakter olmalı, harf ve rakam içermeli.', 'Your password must be at least 8 characters with letters and numbers.');
+  if (v.birthday && !/^\d{2}\.\d{2}\.\d{4}$/.test(v.birthday)) e.birthday = L('GG.AA.YYYY biçiminde yaz, örneğin 14.03.1995.', 'Use DD.MM.YYYY, e.g. 14.03.1995.');
+  if (!v.terms) e.terms = L('Devam etmek için üyelik koşullarını onayla.', 'Accept the membership terms to continue.');
   return e;
 }
 
@@ -61,7 +62,7 @@ export default function SignUp() {
     setServerError(null);
     if (Object.keys(errors).length) return;
     const birthday = v.birthday ? toIsoDate(v.birthday) : null;
-    if (v.birthday && !birthday) { setServerError('Doğum tarihini kontrol et.'); return; }
+    if (v.birthday && !birthday) { setServerError(L('Doğum tarihini kontrol et.', 'Check your date of birth.')); return; }
     setBusy(true);
     const email = v.email.trim().toLowerCase();
     const { data, error } = await supabase.auth.signUp({
@@ -71,7 +72,7 @@ export default function SignUp() {
         data: {
           first_name: v.firstName.trim(),
           last_name: v.lastName.trim(),
-          phone: v.phone,
+          phone: v.phone || null,
           birthday,
           marketing_opt_in: v.marketing,
           terms_accepted: v.terms,
@@ -86,23 +87,23 @@ export default function SignUp() {
   };
 
   const pwRules = [
-    { ok: v.password.length >= 8, label: 'En az 8 karakter' },
-    { ok: LETTER.test(v.password) && /\d/.test(v.password), label: 'Harf ve rakam' },
+    { ok: v.password.length >= 8, label: L('En az 8 karakter', 'At least 8 characters') },
+    { ok: LETTER.test(v.password) && /\d/.test(v.password), label: L('Harf ve rakam', 'Letters and numbers') },
   ];
   const perReward = cat?.settings.stamps_per_reward ?? 10;
 
   return (
     <Screen>
       <TopBar back />
-      <Txt variant="overline" color="secondaryInk" style={{ marginTop: space[5] }}>Üyelik</Txt>
-      <Txt variant="h1" accessibilityRole="header" style={{ marginTop: 4 }}>Üye ol</Txt>
-      <Txt variant="bodySm" color="inkMuted" style={{ marginTop: space[2] }}>Bir dakikada hesabını oluştur; damgaların ve siparişlerin seninle gelsin.</Txt>
+      <Txt variant="overline" color="secondaryInk" style={{ marginTop: space[5] }}>{L('Üyelik', 'Membership')}</Txt>
+      <Txt variant="h1" accessibilityRole="header" style={{ marginTop: 4 }}>{L('Üye ol', 'Sign up')}</Txt>
+      <Txt variant="bodySm" color="inkMuted" style={{ marginTop: space[2] }}>{L('Bir dakikada hesabını oluştur; damgaların ve siparişlerin seninle gelsin.', 'Create your account in a minute; your stamps and orders go with you.')}</Txt>
 
       <Card tone="soft" style={{ marginTop: space[5], gap: space[2] }}>
         {[
-          { icon: Coffee, text: `${perReward} kahvede bir kahve bizden` },
-          { icon: Bell, text: 'Siparişin hazır olunca bildirim' },
-          { icon: Receipt, text: 'Siparişlerin hesabında saklanır' },
+          { icon: Coffee, text: L(`${perReward} kahvede bir kahve bizden`, `Every ${perReward}th coffee is on us`) },
+          { icon: Bell, text: L('Siparişin hazır olunca bildirim', 'A notification when your order is ready') },
+          { icon: Receipt, text: L('Siparişlerin hesabında saklanır', 'Your orders are kept in your account') },
         ].map(({ icon: Icon, text }) => (
           <View key={text} style={{ flexDirection: 'row', gap: space[3], alignItems: 'center' }}>
             <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center' }}>
@@ -114,28 +115,28 @@ export default function SignUp() {
       </Card>
 
       <View style={{ gap: space[5], marginTop: space[6] }}>
-        <Txt variant="h4" accessibilityRole="header">Bilgilerin</Txt>
+        <Txt variant="h4" accessibilityRole="header">{L('Bilgilerin', 'Your details')}</Txt>
         <View style={{ flexDirection: 'row', gap: space[3] }}>
           <View style={{ flex: 1 }}>
-            <Field label="Ad" value={v.firstName} onChangeText={set('firstName')} error={err('firstName')} autoComplete="given-name"
+            <Field label={L('Ad', 'First name')} value={v.firstName} onChangeText={set('firstName')} error={err('firstName')} autoComplete="given-name"
               textContentType="givenName" returnKeyType="next" onSubmitEditing={() => lastNameRef.current?.focus()} />
           </View>
           <View style={{ flex: 1 }}>
-            <Field ref={lastNameRef} label="Soyad" value={v.lastName} onChangeText={set('lastName')} error={err('lastName')} autoComplete="family-name"
+            <Field ref={lastNameRef} label={L('Soyad', 'Last name')} value={v.lastName} onChangeText={set('lastName')} error={err('lastName')} autoComplete="family-name"
               textContentType="familyName" returnKeyType="next" onSubmitEditing={() => emailRef.current?.focus()} />
           </View>
         </View>
-        <Field ref={emailRef} label="E-posta" value={v.email} onChangeText={set('email')} error={err('email')} keyboardType="email-address"
-          autoCapitalize="none" autoComplete="email" textContentType="emailAddress" placeholder="ad@ornek.com" returnKeyType="next"
+        <Field ref={emailRef} label={L('E-posta', 'Email')} value={v.email} onChangeText={set('email')} error={err('email')} keyboardType="email-address"
+          autoCapitalize="none" autoComplete="email" textContentType="emailAddress" placeholder={L('ad@ornek.com', 'name@example.com')} returnKeyType="next"
           onSubmitEditing={() => phoneRef.current?.focus()} />
-        <Field ref={phoneRef} label="Cep telefonu" prefix="+90" value={formatPhone(v.phone)} keyboardType="number-pad" autoComplete="tel-national"
+        <Field ref={phoneRef} label={L('Cep telefonu', 'Turkish mobile number')} optional prefix="+90" value={formatPhone(v.phone)} keyboardType="number-pad" autoComplete="tel-national"
           textContentType="telephoneNumber" placeholder="5XX XXX XX XX" error={err('phone')}
-          hint="Kartla ödeme ve sipariş bildirimleri için gerekir."
+          hint={L('Kartla ödeme için gerekir.', 'Needed only to pay by card in the app.')}
           onChangeText={(t) => set('phone')(t.replace(/\D/g, '').replace(/^0/, '').slice(0, 10))} />
         <View style={{ gap: space[2] }}>
           <Field
             ref={passwordRef}
-            label="Şifre"
+            label={L('Şifre', 'Password')}
             value={v.password}
             onChangeText={set('password')}
             secureTextEntry={!show}
@@ -143,10 +144,10 @@ export default function SignUp() {
             autoCorrect={false}
             autoComplete="new-password"
             textContentType="newPassword"
-            placeholder="En az 8 karakter"
+            placeholder={L('En az 8 karakter', 'At least 8 characters')}
             error={err('password')}
             right={
-              <Pressable accessibilityRole="button" accessibilityLabel={show ? 'Şifreyi gizle' : 'Şifreyi göster'} onPress={() => setShow(!show)}
+              <Pressable accessibilityRole="button" accessibilityLabel={show ? L('Şifreyi gizle', 'Hide password') : L('Şifreyi göster', 'Show password')} onPress={() => setShow(!show)}
                 style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
                 {show ? <EyeOff size={20} color={color.inkMuted} /> : <Eye size={20} color={color.inkMuted} />}
               </Pressable>
@@ -163,8 +164,8 @@ export default function SignUp() {
             </View>
           ) : null}
         </View>
-        <Field label="Doğum tarihi" optional value={v.birthday} placeholder="GG.AA.YYYY" keyboardType="number-pad" error={err('birthday')}
-          hint="Doğum gününü kutlayabilmemiz için."
+        <Field label={L('Doğum tarihi', 'Date of birth')} optional value={v.birthday} placeholder={L('GG.AA.YYYY', 'DD.MM.YYYY')} keyboardType="number-pad" error={err('birthday')}
+          hint={L('Doğum gününü kutlayabilmemiz için.', 'So we can treat you on your birthday.')}
           onChangeText={(t) => {
             const d = t.replace(/\D/g, '').slice(0, 8);
             set('birthday')([d.slice(0, 2), d.slice(2, 4), d.slice(4, 8)].filter(Boolean).join('.'));
@@ -173,32 +174,32 @@ export default function SignUp() {
         <Card style={{ gap: space[2] }}>
           <CheckRow checked={v.terms} onChange={set('terms')} error={err('terms')}>
             <Txt variant="bodySm">
-              <Txt variant="bodySm" style={{ fontFamily: 'DMSans-SemiBold', textDecorationLine: 'underline' }} onPress={() => router.push('/legal/kullanim-kosullari')}>Üyelik ve Kullanım Koşulları</Txt>
-              ’nı okudum, kabul ediyorum.
+              <Txt variant="bodySm" style={{ fontFamily: 'DMSans-SemiBold', textDecorationLine: 'underline' }} onPress={() => router.push('/legal/kullanim-kosullari')}>{L('Üyelik ve Kullanım Koşulları', 'Membership and Terms of Use')}</Txt>
+              {L('’nı okudum, kabul ediyorum.', ': I have read and accept them.')}
             </Txt>
           </CheckRow>
           <Txt variant="caption" color="inkMuted" style={{ marginLeft: 32 }}>
-            Kişisel verilerin{' '}
-            <Txt variant="caption" color="ink" style={{ textDecorationLine: 'underline' }} onPress={() => router.push('/legal/kvkk')}>KVKK Aydınlatma Metni</Txt>
-            {' '}kapsamında işlenir.
+            {L('Kişisel verilerin', 'Your personal data is processed under the')}{' '}
+            <Txt variant="caption" color="ink" style={{ textDecorationLine: 'underline' }} onPress={() => router.push('/legal/kvkk')}>{L('KVKK Aydınlatma Metni', 'KVKK data notice')}</Txt>
+            {' '}{L('kapsamında işlenir.', '(in Turkish).')}
           </Txt>
           <CheckRow checked={v.marketing} onChange={set('marketing')}>
             <Txt variant="bodySm">
-              Kampanya ve fırsatlardan e-posta ve SMS ile haberdar olmak istiyorum{' '}
-              <Txt variant="bodySm" style={{ textDecorationLine: 'underline' }} onPress={() => router.push('/legal/ticari-ileti')}>(Ticari Elektronik İleti Onayı)</Txt>.{' '}
-              <Txt variant="bodySm" color="inkMuted">İsteğe bağlı.</Txt>
+              {L('Kampanya ve fırsatlardan e-posta ve SMS ile haberdar olmak istiyorum', 'I would like to hear about offers by email and SMS')}{' '}
+              <Txt variant="bodySm" style={{ textDecorationLine: 'underline' }} onPress={() => router.push('/legal/ticari-ileti')}>{L('(Ticari Elektronik İleti Onayı)', '(commercial message consent)')}</Txt>.{' '}
+              <Txt variant="bodySm" color="inkMuted">{L('İsteğe bağlı.', 'Optional.')}</Txt>
             </Txt>
           </CheckRow>
         </Card>
 
         {serverError ? <Txt variant="bodySm" color="error" accessibilityLiveRegion="polite">{serverError}</Txt> : null}
         {submitted && Object.keys(errors).length ? (
-          <Txt variant="bodySm" color="error" accessibilityLiveRegion="polite">Kırmızı ile işaretli alanları kontrol et.</Txt>
+          <Txt variant="bodySm" color="error" accessibilityLiveRegion="polite">{L('Kırmızı ile işaretli alanları kontrol et.', 'Check the fields marked in red.')}</Txt>
         ) : null}
-        <Button label="Üye ol" icon={UserPlus} loading={busy} onPress={submit} />
+        <Button label={L('Üye ol', 'Sign up')} icon={UserPlus} loading={busy} onPress={submit} />
         <View style={{ alignItems: 'center', gap: space[2] }}>
-          <Txt variant="bodySm" color="inkMuted">Zaten üye misin?</Txt>
-          <Button label="Giriş yap" variant="tertiary" size="md" onPress={() => router.replace({ pathname: '/auth/sign-in', params: { next } })} />
+          <Txt variant="bodySm" color="inkMuted">{L('Zaten üye misin?', 'Already a member?')}</Txt>
+          <Button label={L('Giriş yap', 'Sign in')} variant="tertiary" size="md" onPress={() => router.replace({ pathname: '/auth/sign-in', params: { next } })} />
         </View>
       </View>
     </Screen>

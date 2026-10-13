@@ -3,6 +3,9 @@ import { Image } from 'expo-image';
 import { Minus, Plus } from 'lucide-react-native';
 import { Txt } from './Txt';
 import { Badge } from './Badge';
+import { Pop, PressableScale } from './Motion';
+import { L } from '@/lib/i18n';
+import { productDesc, productName } from '@/lib/display';
 import { menuImageSource } from '@/lib/supabase';
 import { tl } from '@/lib/format';
 import type { Product } from '@/lib/types';
@@ -25,39 +28,42 @@ export function ProductPhoto({ product, size, soldOut }: { product: Pick<Product
 type CardProps = { product: Product; qty: number; soldOut: boolean; onOpen: () => void; onAdd: () => void; onRemove: () => void };
 
 export function ProductCard({ product, qty, soldOut, onOpen, onAdd, onRemove }: CardProps) {
+  const name = productName(product);
+  const desc = productDesc(product);
   return (
     <View style={styles.card}>
-      <Pressable accessibilityRole="button" accessibilityLabel={`${product.name}, ${tl(product.price)}. Ayrıntılar`} onPress={onOpen} style={{ flex: 1 }}>
+      <PressableScale accessibilityRole="button" accessibilityLabel={L(`${name}, ${tl(product.price)}. Ayrıntılar`, `${name}, ${tl(product.price)}. Details`)}
+        onPress={onOpen} style={{ flex: 1 }} scaleTo={0.97}>
         <View style={styles.well}>
           <ProductPhoto product={product} size={104} soldOut={soldOut} />
           <View style={styles.badge}>
-            {soldOut ? <Badge tone="error" label="Tükendi" /> : product.badge === 'fresh' ? <Badge tone="fresh" label="Bugün fırından" /> : null}
+            {soldOut ? <Badge tone="error" label={L('Tükendi', 'Sold out')} /> : product.badge === 'fresh' ? <Badge tone="fresh" label={L('Bugün fırından', 'Fresh today')} /> : null}
           </View>
         </View>
         <View style={styles.body}>
-          <Txt variant="h5" numberOfLines={2}>{product.name}</Txt>
-          {product.description ? <Txt variant="bodySm" color="inkMuted" numberOfLines={2} style={{ marginTop: 4 }}>{product.description}</Txt> : null}
+          <Txt variant="h5" numberOfLines={2}>{name}</Txt>
+          {desc ? <Txt variant="bodySm" color="inkMuted" numberOfLines={2} style={{ marginTop: 4 }}>{desc}</Txt> : null}
         </View>
-      </Pressable>
+      </PressableScale>
       <View style={styles.foot}>
         <Txt variant="price" color={soldOut ? 'inkMuted' : 'ink'}>{tl(product.price)}</Txt>
         {qty > 0 ? (
-          <View style={styles.stepper}>
-            <Pressable accessibilityRole="button" accessibilityLabel={`${product.name} sepetten bir tane çıkar`} hitSlop={4} onPress={onRemove}
+          <Pop from={0.7} style={styles.stepper}>
+            <Pressable accessibilityRole="button" accessibilityLabel={L(`${name} sepetten bir tane çıkar`, `Remove one ${name} from the cart`)} hitSlop={4} onPress={onRemove}
               style={({ pressed }) => [styles.stepBtn, pressed && { backgroundColor: color.secondaryPressed }]}>
               <Minus size={18} color={color.onSecondary} strokeWidth={2} />
             </Pressable>
-            <Txt variant="label" color="onSecondary" style={styles.stepQty} accessibilityLabel={`Sepette ${qty} adet`}>{qty}</Txt>
-            <Pressable accessibilityRole="button" accessibilityLabel={soldOut ? `${product.name} tükendi` : `${product.name} sepete ekle`}
+            <Txt variant="label" color="onSecondary" style={styles.stepQty} accessibilityLabel={L(`Sepette ${qty} adet`, `${qty} in the cart`)}>{qty}</Txt>
+            <Pressable accessibilityRole="button" accessibilityLabel={soldOut ? L(`${name} tükendi`, `${name} is sold out`) : L(`${name} sepete ekle`, `Add ${name} to the cart`)}
               accessibilityState={{ disabled: soldOut }} disabled={soldOut} hitSlop={4} onPress={onAdd}
               style={({ pressed }) => [styles.stepBtn, pressed && { backgroundColor: color.secondaryPressed }]}>
               <Plus size={18} color={soldOut ? color.inkDisabled : color.onSecondary} strokeWidth={2} />
             </Pressable>
-          </View>
+          </Pop>
         ) : (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={soldOut ? `${product.name} tükendi` : `${product.name} sepete ekle`}
+            accessibilityLabel={soldOut ? L(`${name} tükendi`, `${name} is sold out`) : L(`${name} sepete ekle`, `Add ${name} to the cart`)}
             accessibilityState={{ disabled: soldOut }}
             disabled={soldOut}
             hitSlop={4}

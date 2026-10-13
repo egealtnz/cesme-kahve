@@ -61,6 +61,26 @@ export function Chips<T extends string | number | null>({ options, value, onChan
   );
 }
 
+/** Chips where several can be on at once. */
+export function MultiChips<T extends string>({ options, value, onChange, label }: {
+  options: { value: T; label: string }[]; value: T[]; onChange: (v: T[]) => void; label?: string;
+}) {
+  return (
+    <View accessibilityLabel={label} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+      {options.map((o) => {
+        const on = value.includes(o.value);
+        return (
+          <Pressable key={o.value} accessibilityRole="checkbox" accessibilityState={{ checked: on }}
+            onPress={() => onChange(on ? value.filter((x) => x !== o.value) : [...value, o.value])}
+            style={[styles.chip, on && styles.chipOn]}>
+            <Txt variant="label" color={on ? 'onPrimary' : 'ink'}>{o.label}</Txt>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 export function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <View style={styles.stat}>

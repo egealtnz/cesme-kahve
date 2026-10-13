@@ -1,5 +1,11 @@
 /** Server error codes (from SQL functions and edge functions) → messages customers understand. */
+import { isEn } from './i18n';
+
 const MESSAGES: Record<string, string> = {
+  invalid_options: 'Seçtiğin içecek seçenekleri geçersiz. Ürünü yeniden ekle.',
+  option_unavailable: 'Seçtiğin bir seçenek artık sunulmuyor. Ürünü yeniden ekle.',
+  invalid_note: 'Not en fazla 140 karakter olabilir.',
+  invalid_table: 'Masa numarası geçersiz ya da bu şubede masaya servis yok. Masadaki QR kodunu yeniden okut.',
   not_authenticated: 'Oturumun sona ermiş. Lütfen tekrar giriş yap.',
   profile_missing: 'Hesap bilgilerin bulunamadı. Çıkış yapıp tekrar giriş yap.',
   branch_not_found: 'Bu şubeyi bulamadık. Başka bir şube seç.',
@@ -54,6 +60,56 @@ const MESSAGES: Record<string, string> = {
   over_email_send_rate_limit: 'Çok sık kod istedin. Bir dakika sonra tekrar dene.',
 };
 
+const EN: Record<string, string> = {
+  invalid_options: 'The drink options you picked are not valid. Please add the item again.',
+  option_unavailable: 'One of the options you picked is no longer offered. Please add the item again.',
+  invalid_note: 'The note can be at most 140 characters.',
+  invalid_table: 'This table number is not valid, or this branch has no table service. Scan the QR code on the table again.',
+  not_authenticated: 'Your session has expired. Please sign in again.',
+  profile_missing: 'We could not find your account details. Sign out and sign in again.',
+  branch_not_found: 'We could not find this branch. Choose another one.',
+  branch_not_accepting_orders: 'This branch is not taking app orders right now. Choose another branch.',
+  branch_paused: 'The branch is very busy and has paused orders for a short while. Choose a later time or another branch.',
+  branch_closed_now: 'The branch is closed right now. Use “Later” to order for after it opens.',
+  pickup_outside_hours: 'The branch is closed at the time you picked. Choose another time.',
+  pickup_too_soon: 'There is not enough time to prepare it by then. Choose a slightly later time.',
+  pickup_too_late: 'You can order up to tomorrow at the latest.',
+  cannot_rate: 'This order can no longer be rated.',
+  too_many_favorites: 'You can save up to 30 favourites.',
+  invalid_request: 'Something in the request is not valid. Check and try again.',
+  too_many_open_orders: 'You can have at most 3 open orders. Once you pick them up you can order again.',
+  invalid_items: 'Something is wrong with your cart. Check the items and try again.',
+  invalid_quantity: 'One of the quantities is not valid.',
+  order_too_large: 'An order can have at most 50 items.',
+  product_unavailable: 'An item in your cart is no longer on the menu. We updated your cart.',
+  product_sold_out: 'An item in your cart is sold out at this branch.',
+  milk_unavailable: 'The milk you picked is not available right now. Choose another one.',
+  milk_not_allowed: 'Milk cannot be chosen for this item.',
+  cannot_cancel: 'This order can no longer be cancelled. You can contact the branch.',
+  order_not_found: 'We could not find the order.',
+  order_not_awaiting_payment: 'This order has already been paid or cancelled.',
+  card_payments_disabled: 'Card payment is switched off right now. You can order and pay at the counter.',
+  phone_required: 'A mobile number is needed for card payment. Add it in your account details.',
+  payment_provider_unavailable: 'The payment system cannot be reached right now. Try again later or pay at the counter.',
+  payment_init_failed: 'The payment page could not be opened. Try again or pay at the counter.',
+  payment_signature_invalid: 'The payment could not be verified. Try again.',
+  not_allowed: 'You are not allowed to do this.',
+  not_found: 'Not found. Refresh and try again.',
+  reward_not_found: 'This free coffee code was not found.',
+  reward_already_used: 'This free coffee has already been used.',
+  reward_reserved: 'This free coffee is being used in an open order.',
+  reward_expired: 'This free coffee has expired.',
+  member_not_found: 'This coffee card was not found.',
+  delete_failed: 'Your account could not be deleted right now. Try again later.',
+  network: 'Check your internet connection and try again.',
+  invalid_credentials: 'Wrong email or password.',
+  email_not_confirmed: 'You have not verified your email address yet.',
+  user_already_exists: 'There is already an account with this email. Try signing in.',
+  weak_password: 'Your password must be at least 8 characters and contain letters and numbers.',
+  otp_expired: 'The code has expired or is wrong. Ask for a new one.',
+  over_email_send_rate_limit: 'You asked for codes too often. Try again in a minute.',
+};
+
 export function errorCode(e: unknown): string {
   const anyE = e as { code?: string; message?: string; error?: string } | null;
   const raw = String(anyE?.code ?? anyE?.error ?? anyE?.message ?? e ?? '');
@@ -64,5 +120,7 @@ export function errorCode(e: unknown): string {
 }
 
 export function errorMessage(e: unknown): string {
-  return MESSAGES[errorCode(e)] ?? 'Bir şeyler ters gitti. Tekrar dene.';
+  const code = errorCode(e);
+  if (isEn()) return EN[code] ?? MESSAGES[code] ?? 'Something went wrong. Please try again.';
+  return MESSAGES[code] ?? 'Bir şeyler ters gitti. Tekrar dene.';
 }

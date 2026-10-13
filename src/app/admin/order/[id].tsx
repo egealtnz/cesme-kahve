@@ -18,11 +18,12 @@ import { pickupLabel } from '@/lib/hours';
 import type { OrderStatus } from '@/lib/types';
 import { useToast } from '@/state/toast';
 import { color, space } from '@/theme/tokens';
+import { counterExtras, deliveredLabel, NoteBox, TableTag } from '@/components/StaffOrderBits';
 
 const NEXT: Partial<Record<OrderStatus, { to: OrderStatus; label: string }>> = {
   placed: { to: 'preparing', label: 'Hazırlamaya başla' },
   preparing: { to: 'ready', label: 'Hazır' },
-  ready: { to: 'collected', label: 'Teslim edildi' },
+  ready: { to: 'collected', label: 'Teslim edildi' },   // "Masaya götürüldü" for table orders
 };
 const HANDLED: Partial<Record<OrderStatus, string>> = { preparing: 'Kabul etti', ready: 'Hazırladı', collected: 'Teslim etti', cancelled: 'İptal etti' };
 const PAYMENT = { card: 'Kartla ödendi', store: 'Kasada ödeme' } as const;
@@ -79,6 +80,8 @@ export default function AdminOrder() {
         {dayLabel(o.created_at)} {timeOf(o.created_at)} · {o.customer_name ?? 'Misafir'}
         {o.pickup_at ? ` · Teslim: ${pickupLabel(o.pickup_at)}` : ''}
       </Txt>
+      {o.table_label ? <View style={{ marginTop: space[3] }}><TableTag table={o.table_label} /></View> : null}
+      {o.note ? <NoteBox note={o.note} /> : null}
 
       <Card style={{ marginTop: space[5], paddingVertical: 0 }}>
         {o.order_items?.map((it, i) => (
@@ -88,7 +91,7 @@ export default function AdminOrder() {
               <Txt variant="label" style={{ width: 28 }}>{it.quantity}×</Txt>
               <View style={{ flex: 1 }}>
                 <Txt variant="body">{it.product_name}</Txt>
-                {it.milk_label ? <Txt variant="caption" color="inkMuted">{it.milk_label}</Txt> : null}
+                {counterExtras(it) ? <Txt variant="caption" color="inkMuted">{counterExtras(it)}</Txt> : null}
                 {it.free_quantity ? <Txt variant="caption" color="success">{it.free_quantity} adet hediye kahve</Txt> : null}
               </View>
               <Txt variant="bodySm" style={{ fontVariant: ['tabular-nums'] }}>{tl(it.unit_price * it.quantity)}</Txt>
@@ -132,7 +135,7 @@ export default function AdminOrder() {
 
       {open ? (
         <View style={{ gap: space[2], marginTop: space[5] }}>
-          {next ? <Button label={next.label} loading={busy === next.to} onPress={() => move(next.to)} /> : null}
+          {next ? <Button label={next.to === 'collected' ? deliveredLabel(o.table_label) : next.label} loading={busy === next.to} onPress={() => move(next.to)} /> : null}
           {confirmCancel ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
               <Txt variant="bodySm" style={{ flex: 1 }}>Sipariş iptal edilsin mi? Müşteriye bildirim gider.</Txt>

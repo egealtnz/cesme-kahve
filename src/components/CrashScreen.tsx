@@ -4,20 +4,21 @@ import { useEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, type ErrorBoundaryProps } from 'expo-router';
 import { color, radius, space } from '@/theme/tokens';
+import { L } from '@/lib/i18n';
 
 export function CrashScreen({ error, retry }: ErrorBoundaryProps) {
   useEffect(() => { console.error('[crash]', error); }, [error]);
   return (
     <ScrollView style={{ flex: 1, backgroundColor: color.background }} contentContainerStyle={styles.wrap}>
-      <Text style={styles.title}>Bir şeyler ters gitti</Text>
-      <Text style={styles.body}>Bu ekran açılırken bir hata oluştu. Tekrar dene ya da ana sayfaya dön.</Text>
+      <Text style={styles.title}>{L('Bir şeyler ters gitti', 'Something went wrong')}</Text>
+      <Text style={styles.body}>{L('Bu ekran açılırken bir hata oluştu. Tekrar dene ya da ana sayfaya dön.', 'This screen ran into a problem. Try again or go back home.')}</Text>
       <View style={styles.row}>
         <Pressable accessibilityRole="button" onPress={() => { retry(); }} style={[styles.btn, { backgroundColor: color.primary }]}>
-          <Text style={[styles.btnText, { color: color.onPrimary }]}>Tekrar dene</Text>
+          <Text style={[styles.btnText, { color: color.onPrimary }]}>{L('Tekrar dene', 'Try again')}</Text>
         </Pressable>
         <Pressable accessibilityRole="button" onPress={() => { try { router.replace('/'); } catch { /* router unavailable */ } retry(); }}
           style={[styles.btn, { borderWidth: 1, borderColor: color.primary }]}>
-          <Text style={[styles.btnText, { color: color.primary }]}>Ana sayfa</Text>
+          <Text style={[styles.btnText, { color: color.primary }]}>{L('Ana sayfa', 'Home')}</Text>
         </Pressable>
       </View>
       <Text selectable style={styles.detail}>{String(error?.message ?? error)}</Text>

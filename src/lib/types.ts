@@ -8,17 +8,32 @@ export type Branch = {
   id: string; name: string; district: string; city: string; address: string | null;
   prep_minutes: number; status: 'open' | 'closed' | 'coming_soon'; accepts_orders: boolean; sort: number;
   opening_hours?: OpeningHours | null; busy_extra_minutes?: number; busy_until?: string | null; paused_until?: string | null;
+  /** 0 = no table service; otherwise tables 1…table_count have a QR code. */
+  table_count?: number;
 };
-export type Category = { id: string; name: string; blurb: string | null; is_drink: boolean; sort: number; is_active?: boolean };
+export type Category = { id: string; name: string; blurb: string | null; is_drink: boolean; sort: number; is_active?: boolean; name_en?: string | null; blurb_en?: string | null };
 export type Product = {
   id: string; category_id: string; name: string; description: string | null; price: number;
   is_coffee: boolean; has_milk_options: boolean; image_path: string | null; badge: 'fresh' | null; sort: number;
-  is_active?: boolean;
+  is_active?: boolean; name_en?: string | null; description_en?: string | null;
+  allergens?: Allergen[]; diet?: Diet[];
 };
-export type Milk = { id: string; label: string; extra_price: number; is_plant: boolean; is_default: boolean; sort: number; is_active?: boolean };
+export type Allergen = 'gluten' | 'sut' | 'yumurta' | 'kuruyemis' | 'yer_fistigi' | 'soya' | 'susam';
+export type Diet = 'vegan' | 'vegan_option' | 'vegetarian';
+export type OptionGroup = {
+  id: string; name: string; name_en: string | null; multi: boolean; required: boolean;
+  none_label: string | null; none_label_en: string | null; is_active?: boolean; sort: number;
+};
+export type OptionValue = {
+  id: string; group_id: string; label: string; label_en: string | null; extra_price: number; is_default: boolean; is_active?: boolean; sort: number;
+};
+/** An option as stored on an order line (a snapshot). */
+export type ChosenOption = { id: string; group: string; label: string; label_en: string; price: number };
+export type Milk = { id: string; label: string; extra_price: number; is_plant: boolean; is_default: boolean; sort: number; is_active?: boolean; label_en?: string | null; allergens?: Allergen[] };
 export type Campaign = {
   id: string; tone: 'primary' | 'eco' | 'copper' | 'surface'; eyebrow: string | null; title: string; body: string | null; sort: number;
   is_active?: boolean; starts_at?: string | null; ends_at?: string | null;
+  eyebrow_en?: string | null; title_en?: string | null; body_en?: string | null;
 };
 export type Settings = {
   stamps_per_reward: number; reward_valid_days: number; own_cup_discount: number;
@@ -32,6 +47,7 @@ export type Settings = {
 export type Profile = {
   id: string; first_name: string; last_name: string; phone: string | null; birthday: string | null;
   favorite_branch_id: string | null; marketing_opt_in: boolean; member_code: string; stamps: number;
+  locale?: 'tr' | 'en';
 };
 export type Reward = {
   id: string; code: string; earned_at: string; expires_at: string; reserved_order_id: string | null; used_at: string | null;
@@ -43,6 +59,7 @@ export type OrderRating = { liked: boolean; comment: string | null };
 export type OrderItem = {
   id: number; product_id: string | null; product_name: string; milk_label: string | null;
   unit_price: number; quantity: number; free_quantity: number; is_coffee: boolean;
+  milk_id?: string | null; options?: ChosenOption[]; options_label?: string | null;
 };
 export type Order = {
   id: string; order_no: number; user_id: string | null; customer_name: string | null; branch_id: string;
@@ -51,6 +68,10 @@ export type Order = {
   cup_discount: number; total: number; rewards_used: number; stamps_earned: number;
   created_at: string; ready_at: string | null; collected_at: string | null; cancelled_at: string | null; cancel_reason: string | null;
   pickup_at?: string | null;
+  /** Table number for orders brought to the table. */
+  table_label?: string | null;
+  /** The customer's note for the barista. */
+  note?: string | null;
   order_items?: OrderItem[];
   order_ratings?: OrderRating | null;
   /** Staff actions on the order (branch staff only). */
@@ -110,4 +131,5 @@ export type CustomerDetail = {
 export type AdminOrderRow = {
   id: string; order_no: number; branch_id: string; customer_name: string | null; email: string | null; status: OrderStatus;
   payment_method: PaymentMethod; payment_status: PaymentStatus; total: number; created_at: string; pickup_at: string | null; items: string | null;
+  table_label?: string | null;
 };

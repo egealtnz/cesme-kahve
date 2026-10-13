@@ -11,6 +11,7 @@ import { errorMessage } from '@/lib/errors';
 import type { Order } from '@/lib/types';
 import { useToast } from '@/state/toast';
 import { color, font, radius, space } from '@/theme/tokens';
+import { L } from '@/lib/i18n';
 
 export function canRate(o: Order): boolean {
   return o.status === 'collected' && !!o.collected_at && Date.parse(o.collected_at) > Date.now() - 7 * 86_400_000;
@@ -32,7 +33,7 @@ export function RatingCard({ order, compact }: { order: Order; compact?: boolean
       setSaved(true);
       qc.invalidateQueries({ queryKey: ['order', order.id] });
       qc.invalidateQueries({ queryKey: ['orders'] });
-      toast('Teşekkürler! Görüşün şubeye iletildi.');
+      toast(L('Teşekkürler! Görüşün şubeye iletildi.', 'Thank you! Your feedback went to the branch.'));
     } catch (e) {
       toast(errorMessage(e));
     } finally {
@@ -49,8 +50,8 @@ export function RatingCard({ order, compact }: { order: Order; compact?: boolean
   return (
     <Card style={{ gap: space[3] }}>
       <View>
-        <Txt variant="h6" accessibilityRole="header">{saved ? 'Değerlendirmen için teşekkürler' : compact ? `#${order.order_no} nasıldı?` : 'Siparişin nasıldı?'}</Txt>
-        <Txt variant="bodySm" color="inkMuted">Görüşün doğrudan şubeye iletilir.</Txt>
+        <Txt variant="h6" accessibilityRole="header">{saved ? L('Değerlendirmen için teşekkürler', 'Thanks for your feedback') : compact ? L(`#${order.order_no} nasıldı?`, `How was #${order.order_no}?`) : L('Siparişin nasıldı?', 'How was your order?')}</Txt>
+        <Txt variant="bodySm" color="inkMuted">{L('Görüşün doğrudan şubeye iletilir.', 'Your feedback goes straight to the branch.')}</Txt>
       </View>
       <View style={styles.row}>
         {([true, false] as const).map((v) => {
@@ -58,10 +59,10 @@ export function RatingCard({ order, compact }: { order: Order; compact?: boolean
           const Icon = v ? ThumbsUp : ThumbsDown;
           return (
             <Pressable key={String(v)} accessibilityRole="radio" accessibilityState={{ selected: on }}
-              accessibilityLabel={v ? 'Beğendim' : 'Beğenmedim'} onPress={() => pick(v)}
+              accessibilityLabel={v ? L('Beğendim', 'Liked it') : L('Beğenmedim', 'Didn’t like it')} onPress={() => pick(v)}
               style={[styles.thumb, on && (v ? styles.up : styles.down)]}>
               <Icon size={22} color={on ? color.onPrimary : color.ink} strokeWidth={1.75} />
-              <Txt variant="label" color={on ? 'onPrimary' : 'ink'}>{v ? 'Beğendim' : 'Beğenmedim'}</Txt>
+              <Txt variant="label" color={on ? 'onPrimary' : 'ink'}>{v ? L('Beğendim', 'Liked it') : L('Beğenmedim', 'Didn’t like it')}</Txt>
             </Pressable>
           );
         })}
@@ -71,15 +72,15 @@ export function RatingCard({ order, compact }: { order: Order; compact?: boolean
           <TextInput
             value={comment}
             onChangeText={(t) => { setComment(t); setSaved(false); }}
-            placeholder={liked ? 'Eklemek istediğin bir şey var mı? (isteğe bağlı)' : 'Ne olmadı? Anlatırsan şube düzeltsin.'}
+            placeholder={liked ? L('Eklemek istediğin bir şey var mı? (isteğe bağlı)', 'Anything to add? (optional)') : L('Ne olmadı? Anlatırsan şube düzeltsin.', 'What went wrong? Tell us so the branch can fix it.')}
             placeholderTextColor={color.inkMuted}
             multiline
             maxLength={500}
-            accessibilityLabel="Yorum"
+            accessibilityLabel={L('Yorum', 'Comment')}
             style={styles.input}
           />
           {!saved ? (
-            <Button label="Gönder" size="md" loading={saving} onPress={() => save(liked, comment)} style={{ alignSelf: 'flex-start' }} />
+            <Button label={L('Gönder', 'Send')} size="md" loading={saving} onPress={() => save(liked, comment)} style={{ alignSelf: 'flex-start' }} />
           ) : null}
         </>
       ) : null}

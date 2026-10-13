@@ -10,11 +10,11 @@ import { Field } from '@/components/Field';
 import { ToggleRow } from '@/components/Controls';
 import { Card, Screen, TopBar } from '@/components/Layout';
 import { ProductPhoto } from '@/components/Product';
-import { Chips } from '@/components/Admin';
-import { saveProduct, uploadProductPhoto, useAdminCatalogue } from '@/lib/api';
+import { Chips, MultiChips } from '@/components/Admin';
+import { saveProduct, setProductGroups, uploadProductPhoto, useAdminCatalogue } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
 import { IS_DEMO } from '@/lib/supabase';
-import type { Product } from '@/lib/types';
+import type { Allergen, Diet, OptionGroup, Product } from '@/lib/types';
 import { useToast } from '@/state/toast';
 import { space } from '@/theme/tokens';
 
@@ -37,14 +37,25 @@ export default function AdminProduct() {
   if (data.isLoading || (id !== 'new' && !existing)) {
     return <Screen><TopBar back />{!data.isLoading ? <Txt variant="body" style={{ marginTop: space[6] }}>Ürün bulunamadı.</Txt> : null}</Screen>;
   }
-  return <ProductForm key={existing?.id ?? 'new'} product={existing} categories={data.data?.categories ?? []} />;
+  return <ProductForm key={existing?.id ?? 'new'} product={existing} categories={data.data?.categories ?? []}
+    groups={data.data?.optionGroups ?? []} linked={(data.data?.productGroups ?? []).filter((l) => l.product_id === existing?.id).map((l) => l.group_id)} />;
 }
 
-function ProductForm({ product, categories }: { product?: Product; categories: { id: string; name: string; is_drink: boolean }[] }) {
+const ALLERGEN_TR: Record<Allergen, string> = { gluten: 'Gluten', sut: 'Süt', yumurta: 'Yumurta', kuruyemis: 'Kuruyemiş', yer_fistigi: 'Yer fıstığı', soya: 'Soya', susam: 'Susam' };
+const DIET_TR: Record<Diet, string> = { vegan: 'Vegan', vegan_option: 'Bitkisel sütle vegan', vegetarian: 'Vejetaryen' };
+
+function ProductForm({ product, categories, groups, linked }: {
+  product?: Product; categories: { id: string; name: string; is_drink: boolean }[]; groups: OptionGroup[]; linked: string[];
+}) {
   const qc = useQueryClient();
   const toast = useToast();
   const [name, setName] = useState(product?.name ?? '');
   const [description, setDescription] = useState(product?.description ?? '');
+  const [nameEn, setNameEn] = useState(product?.name_en ?? '');
+  const [descriptionEn, setDescriptionEn] = useState(product?.description_en ?? '');
+  const [allergens, setAllergens] = useState<Allergen[]>(product?.allergens ?? []);
+  const [diet, setDiet] = useState<Diet[]>(product?.diet ?? []);
+  const [groupIds, setGroupIds] = useState<string[]>(linked);
   const [price, setPrice] = useState(product ? (product.price / 100).toFixed(product.price % 100 ? 2 : 0).replace('.', ',') : '');
   const [category, setCategory] = useState(product?.category_id ?? categories[0]?.id ?? '');
   const [isCoffee, setIsCoffee] = useState(product?.is_coffee ?? false);
@@ -97,9 +108,11 @@ function ProductForm({ product, categories }: { product?: Product; categories: {
     try {
       const patch = {
         name: name.trim(), description: description.trim() || null, price: kurus!, category_id: category,
+        name_en: nameEn.trim() || null, description_en: descriptionEn.trim() || null, allergens, diet,
         is_coffee: isCoffee, has_milk_options: milk, badge: fresh ? 'fresh' as const : null, is_active: active, image_path: imagePath,
       };
       await saveProduct(product?.id ?? null, product ? patch : { ...patch, id: productId, sort: 900 });
+      await setProductGroups(productId, groupIds, linked);
       await Promise.all([qc.invalidateQueries({ queryKey: ['admin-catalogue'] }), qc.invalidateQueries({ queryKey: ['catalogue'] })]);
       toast(product ? 'Ürün güncellendi.' : 'Ürün menüye eklendi.');
       router.back();
@@ -142,6 +155,29 @@ function ProductForm({ product, categories }: { product?: Product; categories: {
         <ToggleRow icon={Coffee} tone="soft" title="Kahve kartına damga" body="Ücretli her adet bir damga kazandırır; hediye kahve olarak da kullanılabilir." value={isCoffee} onChange={setIsCoffee} />
         <ToggleRow icon={Milk} tone="soft" title="Süt seçimi" body={drinkCategory ? 'Müşteri süt türünü seçer (bitkisel sütler ücretli).' : 'Genelde yalnızca içecekler için.'} value={milk} onChange={setMilk} />
         <ToggleRow icon={Wheat} tone="soft" title="“Bugün fırından” etiketi" value={fresh} onChange={setFresh} />
+      </Card>
+
+      {groups.length ? (
+        <Card style={{ marginTop: space[5], gap: space[3] }}>
+          <Txt variant="h6">İçecek seçenekleri</Txt>
+          <Txt variant="bodySm" color="inkMuted">Müşteri bu ürünü eklerken hangi seçenekleri görsün? Fiyatları Şirket paneli → Süt ve içecek seçenekleri’nden değiştirirsin.</Txt>
+          <MultiChips options={groups.map((g) => ({ value: g.id, label: `${g.name}${g.is_active === false ? ' (kapalı)' : ''}` }))} value={groupIds} onChange={setGroupIds} label="Seçenek grupları" />
+        </Card>
+      ) : null}
+
+      <Card style={{ marginTop: space[5], gap: space[3] }}>
+        <Txt variant="h6">Alerjenler</Txt>
+        <Txt variant="bodySm" color="inkMuted">Tarif ve tedarikçi bilgisine göre işaretle. Sütlü içeceklerde seçilen sütün alerjeni otomatik eklenir.</Txt>
+        <MultiChips options={(Object.keys(ALLERGEN_TR) as Allergen[]).map((a) => ({ value: a, label: ALLERGEN_TR[a] }))} value={allergens} onChange={setAllergens} label="Alerjenler" />
+        <Txt variant="h6" style={{ marginTop: space[2] }}>Beslenme</Txt>
+        <MultiChips options={(Object.keys(DIET_TR) as Diet[]).map((d) => ({ value: d, label: DIET_TR[d] }))} value={diet} onChange={setDiet} label="Beslenme" />
+      </Card>
+
+      <Card style={{ marginTop: space[5], gap: space[4] }}>
+        <Txt variant="h6">İngilizce (yabancı müşteriler için)</Txt>
+        <Field label="Ürün adı (İngilizce)" optional value={nameEn} onChangeText={setNameEn} maxLength={80} placeholder="e.g. Hazelnut Latte" />
+        <Field label="Açıklama (İngilizce)" optional value={descriptionEn} onChangeText={setDescriptionEn} maxLength={300} multiline
+          placeholder="Boş bırakırsan Türkçesi görünür" style={{ minHeight: 64, textAlignVertical: 'top', paddingTop: 12 }} />
       </Card>
       <View style={{ height: space[6] }} />
     </Screen>

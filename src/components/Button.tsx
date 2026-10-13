@@ -1,8 +1,12 @@
-import { ActivityIndicator, Pressable, StyleSheet, View, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Animated, Platform, Pressable, StyleSheet, View, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import type { LucideIcon } from 'lucide-react-native';
 import { Txt } from './Txt';
+import { useReducedMotion } from './Motion';
 import { color, radius, size, space } from '@/theme/tokens';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type Variant = 'primary' | 'secondary' | 'tertiary' | 'accent' | 'danger';
 type Size = 'lg' | 'md' | 'sm';
@@ -28,12 +32,20 @@ const FG: Record<Variant, keyof typeof color> = {
   primary: 'onPrimary', secondary: 'ink', tertiary: 'ink', accent: 'onSecondary', danger: 'error',
 };
 
-export function Button({ label, variant = 'primary', size: s = 'lg', icon: Icon, loading, full, disabled, style, onPress, ...rest }: Props) {
+export function Button({ label, variant = 'primary', size: s = 'lg', icon: Icon, loading, full, disabled, style, onPress, onPressIn, onPressOut, ...rest }: Props) {
   const isDisabled = disabled || loading;
   const fg = isDisabled ? 'inkDisabled' : FG[variant];
   const iconOnly = !label;
+  const [pressed, setPressed] = useState(false);
+  const [scale] = useState(() => new Animated.Value(1));
+  const reduce = useReducedMotion();
+  const springTo = (v: number) => {
+    if (!reduce) Animated.spring(scale, { toValue: v, friction: 7, tension: 320, useNativeDriver: Platform.OS !== 'web' }).start();
+  };
   return (
-    <Pressable
+    <AnimatedPressable
+      onPressIn={(e) => { setPressed(true); springTo(0.96); onPressIn?.(e); }}
+      onPressOut={(e) => { setPressed(false); springTo(1); onPressOut?.(e); }}
       accessibilityRole="button"
       accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
       disabled={isDisabled}
@@ -42,7 +54,7 @@ export function Button({ label, variant = 'primary', size: s = 'lg', icon: Icon,
         if (variant === 'primary' || variant === 'accent') Haptics.selectionAsync().catch(() => undefined);
         onPress?.(e);
       }}
-      style={({ pressed }) => [
+      style={[
         styles.base,
         styles[s],
         iconOnly && { width: s === 'lg' ? size.buttonLg : s === 'md' ? size.buttonMd : size.buttonSm, paddingHorizontal: 0, borderRadius: radius.full },
@@ -50,7 +62,7 @@ export function Button({ label, variant = 'primary', size: s = 'lg', icon: Icon,
         variant === 'secondary' && !isDisabled && { borderWidth: 1.5, borderColor: color.primary },
         variant === 'danger' && { borderWidth: 1.5, borderColor: color.error },
         full && { alignSelf: 'stretch' },
-        pressed && !isDisabled && { transform: [{ scale: 0.98 }] },
+        { transform: [{ scale }] },
         style,
       ]}
       {...rest}
@@ -61,7 +73,7 @@ export function Button({ label, variant = 'primary', size: s = 'lg', icon: Icon,
           <Txt variant={s === 'sm' ? 'label' : 'button'} color={fg} numberOfLines={1}>{label}</Txt>
         </View>
       ) : null}
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 

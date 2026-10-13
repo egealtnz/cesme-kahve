@@ -79,7 +79,7 @@ export default function AdminHome() {
         <NavRow icon={UserRound} title="Müşteriler" body="Müşteri ara, kahve kartı, hediye kahve, damga düzeltme" onPress={() => router.push('/admin/customers')} />
         <NavRow icon={Users} title="Ekip" body="Tüm şubelerin müdür ve baristaları, Excel listesi" onPress={() => router.push('/admin/team')} />
         <NavRow icon={Coffee} title="Menü ve fiyatlar" body="Ürün ekle, fiyat ve fotoğraf değiştir, menüden kaldır" onPress={() => router.push('/admin/menu')} />
-        <NavRow icon={Milk} title="Süt seçenekleri ve kategoriler" body="Süt fiyat farkları, kategorileri gizle/göster" onPress={() => router.push('/admin/options')} />
+        <NavRow icon={Milk} title="Süt ve içecek seçenekleri" body="Boy, ekstra shot, şurup, şeker, süt fiyatları; kategoriler" onPress={() => router.push('/admin/options')} />
         <NavRow icon={Store} title="Şubeler ve çalışma saatleri" body="Açılış-kapanış saatleri, hazırlık süresi, sipariş alma" onPress={() => router.push('/admin/branches')} />
         <NavRow icon={Megaphone} title="Kampanya kartları" body="Ana sayfadaki kampanyalar" onPress={() => router.push('/admin/campaigns')} />
         <NavRow icon={Bell} title="Bildirim gönder" body="İzin veren müşterilere kampanya duyurusu" onPress={() => router.push('/admin/notify')} />

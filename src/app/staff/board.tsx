@@ -18,6 +18,7 @@ import type { Order, OrderStatus } from '@/lib/types';
 import { useAuth } from '@/state/auth';
 import { useToast } from '@/state/toast';
 import { color, radius, space } from '@/theme/tokens';
+import { counterExtras, deliveredLabel, NoteBox, TableTag } from '@/components/StaffOrderBits';
 
 const CHIME = require('../../../assets/sounds/new-order.wav');
 const NEXT: Partial<Record<OrderStatus, { status: OrderStatus; label: string; icon: typeof Check; bg: string }>> = {
@@ -141,7 +142,7 @@ export default function CounterBoard() {
               {columns.later.map((o) => (
                 <View key={o.id} style={styles.later}>
                   <CalendarClock size={18} color={color.warning} strokeWidth={1.75} />
-                  <Txt variant="label">{pickupLabel(o.pickup_at!)} · #{o.order_no} {o.customer_name ?? ''}</Txt>
+                  <Txt variant="label">{pickupLabel(o.pickup_at!)} · #{o.order_no} {o.customer_name ?? ''}{o.note ? ' · notlu' : ''}</Txt>
                 </View>
               ))}
             </View>
@@ -165,6 +166,7 @@ function BoardCard({ order: o, busy, onAdvance }: { order: Order; busy: boolean;
           <Txt variant="bodySm" color="inkMuted">{timeOf(o.created_at)}{who ? ` · ${who}` : ''}</Txt>
         </View>
       </View>
+      {o.table_label ? <View style={{ marginTop: space[2] }}><TableTag table={o.table_label} large /></View> : null}
       {o.pickup_at ? (
         <View style={styles.badge}>
           <CalendarClock size={18} color={color.warning} strokeWidth={1.75} />
@@ -177,11 +179,12 @@ function BoardCard({ order: o, busy, onAdvance }: { order: Order; busy: boolean;
             <Txt variant="h4" style={{ width: 40 }}>{i.quantity}×</Txt>
             <View style={{ flex: 1 }}>
               <Txt variant="h4">{i.product_name}</Txt>
-              {i.milk_label ? <Txt variant="bodyLg" color="secondaryInk">{i.milk_label}</Txt> : null}
+              {counterExtras(i) ? <Txt variant="bodyLg" color="secondaryInk" style={{ fontFamily: 'DMSans-SemiBold' }}>{counterExtras(i)}</Txt> : null}
             </View>
           </View>
         ))}
       </View>
+      {o.note ? <NoteBox note={o.note} large /> : null}
       <View style={styles.meta}>
         {o.own_cup ? <View style={styles.badge}><Recycle size={16} color={color.success} strokeWidth={1.75} /><Txt variant="label" color="success">Kendi bardağı</Txt></View> : null}
         <Txt variant="label" color={o.payment_status === 'paid' ? 'success' : 'warning'}>
@@ -189,11 +192,11 @@ function BoardCard({ order: o, busy, onAdvance }: { order: Order; busy: boolean;
         </Txt>
       </View>
       {next ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={`#${o.order_no}: ${next.label}`} disabled={busy}
+        <Pressable accessibilityRole="button" accessibilityLabel={`#${o.order_no}: ${next.status === 'collected' ? deliveredLabel(o.table_label) : next.label}`} disabled={busy}
           onPress={() => onAdvance(o, next.status)}
           style={({ pressed }) => [styles.big, { backgroundColor: next.bg }, (pressed || busy) && { opacity: 0.75 }]}>
           <next.icon size={26} color={color.onPrimary} strokeWidth={2} />
-          <Txt variant="h4" color="onPrimary">{busy ? 'Bekleyin…' : next.label}</Txt>
+          <Txt variant="h4" color="onPrimary">{busy ? 'Bekleyin…' : next.status === 'collected' ? deliveredLabel(o.table_label) : next.label}</Txt>
         </Pressable>
       ) : null}
     </View>

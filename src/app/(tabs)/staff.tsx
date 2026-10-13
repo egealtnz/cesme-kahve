@@ -21,6 +21,7 @@ import type { Order, OrderStatus } from '@/lib/types';
 import { useAuth } from '@/state/auth';
 import { useToast } from '@/state/toast';
 import { color, radius, space } from '@/theme/tokens';
+import { counterExtras, deliveredLabel, NoteBox, TableTag } from '@/components/StaffOrderBits';
 
 const STAFF_BRANCH_KEY = 'ck.staff.branch';
 
@@ -202,6 +203,7 @@ export default function StaffScreen() {
                         <Txt variant="caption" color="inkMuted">{timeOf(o.created_at)}</Txt>
                       </View>
                     </View>
+                    {o.table_label ? <View style={{ marginTop: space[2] }}><TableTag table={o.table_label} /></View> : null}
                     {o.pickup_at ? (
                       <View style={styles.pickup}>
                         <CalendarClock size={16} color={color.warning} strokeWidth={1.75} />
@@ -215,22 +217,23 @@ export default function StaffScreen() {
                           <Txt variant="bodyLg" style={{ width: 32, fontFamily: 'DMSans-Bold' }}>{i.quantity}×</Txt>
                           <View style={{ flex: 1 }}>
                             <Txt variant="bodyLg">{i.product_name}</Txt>
-                            {i.milk_label ? <Txt variant="bodySm" color="inkMuted">{i.milk_label}</Txt> : null}
+                            {counterExtras(i) ? <Txt variant="bodySm" color="secondaryInk" style={{ fontFamily: 'DMSans-SemiBold' }}>{counterExtras(i)}</Txt> : null}
                             {i.free_quantity ? <Txt variant="bodySm" color="success">{i.free_quantity} adet hediye kahve</Txt> : null}
                           </View>
                         </View>
                       ))}
                     </View>
+                    {o.note ? <NoteBox note={o.note} /> : null}
                     <View style={styles.tags}>
                       {o.own_cup ? <Badge tone="eco" icon={Recycle} label="Kendi bardağı" /> : null}
-                      {o.eco_packaging ? <Badge tone="eco" icon={Leaf} label="Çevre dostu ambalaj" /> : <Badge label="Standart ambalaj" />}
+                      {o.table_label ? null : o.eco_packaging ? <Badge tone="eco" icon={Leaf} label="Çevre dostu ambalaj" /> : <Badge label="Standart ambalaj" />}
                       {o.payment_status === 'paid'
                         ? <Badge tone="success" label={o.total === 0 ? 'Hediye' : 'Kartla ödendi'} />
                         : <Badge tone="warning" label={`Kasada ${tl(o.total)} alınacak`} />}
                     </View>
                     <View style={styles.actions}>
                       {next ? (
-                        <Button label={next.label} icon={next.icon} style={{ flex: 1 }} loading={busyId === o.id}
+                        <Button label={next.status === 'collected' ? deliveredLabel(o.table_label) : next.label} icon={next.icon} style={{ flex: 1 }} loading={busyId === o.id}
                           onPress={() => advance(o, next.status)} />
                       ) : null}
                       {cancellable ? (

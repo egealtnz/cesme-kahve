@@ -720,8 +720,8 @@ await test('company panel: live branches, all staff, customers, gifts, stamp fix
     // orders across branches: by number, by name, open ones only
     const byNo = await rpc(boss.client, 'admin_find_orders', { p_query: `#${o.order_no}` });
     assert.equal(byNo.length, 1); assert.equal(byNo[0].items, '1× Su'); assert.equal(byNo[0].email, c.email);
-    assert.ok((await rpc(boss.client, 'admin_find_orders', { p_query: 'nehir', p_status: 'open' })).some((x) => x.id === o.id));
-    assert.equal((await rpc(boss.client, 'admin_find_orders', { p_query: 'nehir', p_status: 'cancelled' })).length, 0);
+    assert.ok((await rpc(boss.client, 'admin_find_orders', { p_query: c.email, p_status: 'open' })).some((x) => x.id === o.id));
+    assert.equal((await rpc(boss.client, 'admin_find_orders', { p_query: c.email, p_status: 'cancelled' })).length, 0);
     assert.equal((await rpc(boss.client, 'admin_find_orders', { p_branch: 'alacati', p_query: String(o.order_no) })).length, 0);
     // the owner can act on any branch's orders
     const res = await fn(boss, 'staff-order-status', { order_id: o.id, status: 'cancelled' });
@@ -737,6 +737,62 @@ await test('company panel: live branches, all staff, customers, gifts, stamp fix
   } finally {
     await admin.from('push_outbox').delete().eq('user_id', c.id);
     for (const id of [boss.id, c.id]) await admin.auth.admin.deleteUser(id);
+  }
+});
+
+await test('drink options are priced on the server; notes and table orders; allergens and English fields', async () => {
+  const c = await newCustomer('Masa');
+  try {
+    // anyone can read the menu extras
+    const { data: latte } = await anon.from('products').select('price, name_en, allergens, diet').eq('id', 'latte').single();
+    assert.equal(latte.name_en, 'Caffè Latte'); assert.deepEqual(latte.diet, ['vegan_option', 'vegetarian']);
+    const { data: groups } = await anon.from('product_option_groups').select('group_id').eq('product_id', 'latte');
+    assert.ok(groups.some((g) => g.group_id === 'surup'));
+    const { data: almond } = await anon.from('milk_options').select('allergens, label_en').eq('id', 'badem').single();
+    assert.deepEqual(almond.allergens, ['kuruyemis']); assert.equal(almond.label_en, 'Almond milk');
+
+    // options add to the price, in group order, with the label for the barista
+    const o = await rpc(c.client, 'place_order_v3', { p_branch_id: 'pendik-marina', p_payment_method: 'store',
+      p_items: [{ product_id: 'latte', quantity: 1, options: ['vanilya', 'buyuk', 'ekstra-shot'], price: 1 },
+                { product_id: 'turk-kahvesi', quantity: 1 }],
+      p_note: '  Az köpüklü \n lütfen  ' });
+    const { data: items } = await c.client.from('order_items').select('product_id, unit_price, options_label, options').eq('order_id', o.id).order('id');
+    assert.equal(items[0].unit_price, latte.price + 2000 + 2500 + 1500);
+    assert.equal(items[0].options_label, 'Büyük · Ekstra shot · Vanilya');
+    assert.equal(items[0].options[2].label_en, 'Vanilla');
+    assert.equal(items[1].options_label, 'Sade', 'a required group falls back to its default');
+    const { data: seen } = await staff.client.from('orders').select('note, table_label').eq('id', o.id).single();
+    assert.deepEqual(seen, { note: 'Az köpüklü lütfen', table_label: null });
+    await fn(staff, 'staff-order-status', { order_id: o.id, status: 'cancelled' });
+
+    const bad = (items, extra = {}) => rpcError(c.client, 'place_order_v3', { p_branch_id: 'pendik-marina', p_payment_method: 'store', p_items: items, ...extra });
+    assert.match(await bad([{ product_id: 'latte', quantity: 1, options: ['vanilya', 'karamel'] }]), /invalid_options/);
+    assert.match(await bad([{ product_id: 'latte', quantity: 1, options: ['sade'] }]), /option_unavailable/);
+    assert.match(await bad([{ product_id: 'su', quantity: 1, options: ['buyuk'] }]), /option_unavailable/);
+    assert.match(await bad([{ product_id: 'su', quantity: 1 }], { p_note: 'x'.repeat(141) }), /invalid_note/);
+
+    // tables: only up to the branch's table count, only "now", no takeaway packaging
+    assert.match(await bad([{ product_id: 'su', quantity: 1 }], { p_table: '3' }), /invalid_table/);
+    await admin.from('branches').update({ table_count: 12 }).eq('id', 'pendik-marina');
+    assert.match(await bad([{ product_id: 'su', quantity: 1 }], { p_table: '13' }), /invalid_table/);
+    assert.match(await bad([{ product_id: 'su', quantity: 1 }], { p_table: '0' }), /invalid_table/);
+    assert.match(await bad([{ product_id: 'su', quantity: 1 }], { p_table: '3', p_pickup_at: new Date(Date.now() + 3600e3).toISOString() }), /invalid_table/);
+    const t = await rpc(c.client, 'place_order_v3', { p_branch_id: 'pendik-marina', p_payment_method: 'store',
+      p_items: [{ product_id: 'su', quantity: 1 }], p_table: '7', p_eco_packaging: true });
+    assert.equal(t.table_label, '7'); assert.equal(t.eco_packaging, false);
+    const found = await rpc(staff.client, 'is_staff', { p_branch: 'pendik-marina' });
+    assert.equal(found, true);
+    await fn(staff, 'staff-order-status', { order_id: t.id, status: 'cancelled' });
+
+    // the customer's language is kept for notifications
+    const { error: le } = await c.client.from('profiles').update({ locale: 'en' }).eq('id', c.id);
+    assert.ifError(le);
+    assert.equal((await profile(c)).locale, 'en');
+    const { error: bad2 } = await c.client.from('profiles').update({ locale: 'de' }).eq('id', c.id);
+    assert.ok(bad2, 'only tr / en');
+  } finally {
+    await admin.from('branches').update({ table_count: 0 }).eq('id', 'pendik-marina');
+    await admin.auth.admin.deleteUser(c.id);
   }
 });
 

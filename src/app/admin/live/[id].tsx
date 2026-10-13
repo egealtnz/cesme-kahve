@@ -8,6 +8,7 @@ import { NavRow, Stat } from '@/components/Admin';
 import { BranchLoad } from '@/components/BranchLoad';
 import { AdminOrderRow } from '@/components/AdminOrderRow';
 import { StateBadge } from '@/components/LiveBranches';
+import { counterExtras } from '@/components/StaffOrderBits';
 import { useBranchesLive, useBranchQueue, useLiveOverview } from '@/lib/api';
 import { tl } from '@/lib/format';
 import { branchState } from '@/lib/hours';
@@ -53,7 +54,7 @@ export default function AdminLiveBranch() {
         {orders.map((o, i) => (
           <View key={o.id}>
             {i > 0 ? <Divider /> : null}
-            <AdminOrderRow o={{ ...o, branch: null, items: o.order_items?.map((x) => `${x.quantity}× ${x.product_name}`).join(', ') }} />
+            <AdminOrderRow o={{ ...o, branch: null, items: o.order_items?.map((x) => `${x.quantity}× ${x.product_name}${counterExtras(x) ? ` (${counterExtras(x)})` : ''}`).join(', ') }} />
           </View>
         ))}
       </Card>

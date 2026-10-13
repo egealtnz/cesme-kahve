@@ -11,7 +11,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { priceCart } from '../pricing';
-import type { Branch, Milk, Order, OrderItem, Product, Profile, Reward, Settings } from '../types';
+import type { Branch, Milk, OptionValue, Order, OrderItem, Product, Profile, Reward, Settings } from '../types';
 import catalogue from './catalogue.json';
 import { DEMO_CODE, DEMO_CUSTOMER, DEMO_MANAGER, DEMO_MEMBER_CODE, DEMO_OWNER, DEMO_REWARD_CODE, DEMO_STAFF } from './constants';
 import { isOpenAt } from '../hours';
@@ -24,6 +24,9 @@ const categories = catalogue.menu_categories as unknown as { id: string; is_drin
 const milks = catalogue.milk_options as unknown as (Milk & { is_active: boolean })[];
 const branches = catalogue.branches as unknown as Branch[];
 const campaignsList = catalogue.campaigns as unknown as Row[];
+const optionGroups = catalogue.option_groups as unknown as Row[];
+const optionValues = catalogue.option_values as unknown as Row[];
+const productGroups = catalogue.product_option_groups as unknown as Row[];
 // Owner edits (menu, branches, campaigns, settings) are applied over a pristine copy of the catalogue.
 const PRISTINE = JSON.parse(JSON.stringify(catalogue)) as typeof catalogue;
 
@@ -47,7 +50,7 @@ type State = {
   ratings?: { order_id: string; user_id: string | null; liked: boolean; comment: string | null; created_at: string }[];
   favorites?: { id: number; user_id: string; product_id: string; milk_id: string | null; created_at: string }[];
   pushCampaigns?: { id: number; title: string; body: string; branch_id: string | null; recipients: number; created_at: string }[];
-  edits?: { products?: Row[]; campaigns?: Row[]; branches?: Row[]; settings?: Row; milks?: Row[]; categories?: Row[] };
+  edits?: { products?: Row[]; campaigns?: Row[]; branches?: Row[]; settings?: Row; milks?: Row[]; categories?: Row[]; groups?: Row[]; values?: Row[]; links?: Row[] };
   rewards: DemoReward[];
   orders: DemoOrder[];
   items: DemoItem[];
@@ -298,10 +301,13 @@ function applyEdits() {
   put(branches as unknown as Row[], e.branches, PRISTINE.branches as unknown as Row[]);
   put(milks as unknown as Row[], e.milks, PRISTINE.milk_options as unknown as Row[]);
   put(categories as unknown as Row[], e.categories, PRISTINE.menu_categories as unknown as Row[]);
+  put(optionGroups, e.groups, PRISTINE.option_groups as unknown as Row[]);
+  put(optionValues, e.values, PRISTINE.option_values as unknown as Row[]);
+  put(productGroups, e.links, PRISTINE.product_option_groups as unknown as Row[]);
   for (const k of Object.keys(settings)) delete (settings as unknown as Row)[k];
   Object.assign(settings, clone(PRISTINE.app_settings), e.settings ?? {});
 }
-function saveEdits(kind: 'products' | 'campaigns' | 'branches' | 'settings' | 'milks' | 'categories') {
+function saveEdits(kind: 'products' | 'campaigns' | 'branches' | 'settings' | 'milks' | 'categories' | 'options') {
   state.edits ??= {};
   if (kind === 'products') state.edits.products = clone(products as unknown as Row[]);
   if (kind === 'campaigns') state.edits.campaigns = clone(campaignsList);
@@ -309,6 +315,7 @@ function saveEdits(kind: 'products' | 'campaigns' | 'branches' | 'settings' | 'm
   if (kind === 'settings') state.edits.settings = clone(settings as unknown as Row);
   if (kind === 'milks') state.edits.milks = clone(milks as unknown as Row[]);
   if (kind === 'categories') state.edits.categories = clone(categories as unknown as Row[]);
+  if (kind === 'options') { state.edits.groups = clone(optionGroups); state.edits.values = clone(optionValues); state.edits.links = clone(productGroups); }
   save();
 }
 
@@ -402,6 +409,9 @@ function tableRows(table: string): Row[] {
     case 'app_settings': return [settings as unknown as Row];
     case 'product_availability': return state.availability as Row[];
     case 'profiles': return state.profiles.filter((p) => p.id === me) as Row[];
+    case 'option_groups': return isAdmin() ? optionGroups : optionGroups.filter((g) => g.is_active);
+    case 'option_values': return isAdmin() ? optionValues : optionValues.filter((v) => v.is_active);
+    case 'product_option_groups': return productGroups;
     case 'staff_members': return state.staff.filter((s) => s.user_id === me) as Row[];
     case 'rewards': return state.rewards.filter((r) => r.user_id === me) as Row[];
     case 'orders': return state.orders.filter((o) => (me && o.user_id === me) || isStaff(o.branch_id)) as Row[];
@@ -456,6 +466,18 @@ function writeInsert(table: string, row: Row, cols: string): Result {
     save();
     return { data: null, error: null };
   }
+  if (table === 'product_option_groups' && isAdmin()) {
+    const rows = (Array.isArray(row) ? row : [row]) as Row[];
+    for (const r of rows) if (!productGroups.some((l) => l.product_id === r.product_id && l.group_id === r.group_id)) productGroups.push({ ...r });
+    saveEdits('options');
+    return { data: null, error: null };
+  }
+  if (table === 'option_values' && isAdmin()) {
+    const full = { is_default: false, is_active: true, sort: 99, label_en: null, ...row };
+    optionValues.push(full);
+    saveEdits('options');
+    return { data: [full], error: null };
+  }
   if ((table === 'products' || table === 'campaigns') && isAdmin()) {
     const target = table === 'products' ? (products as unknown as Row[]) : campaignsList;
     const full = table === 'products'
@@ -472,6 +494,11 @@ function writeDelete(table: string, rows: Row[]): Result {
   if (table === 'favorites') {
     state.favorites = (state.favorites ?? []).filter((f) => !rows.includes(f as unknown as Row));
     save();
+    return { data: null, error: null };
+  }
+  if (table === 'product_option_groups' && isAdmin()) {
+    for (const r of rows) productGroups.splice(productGroups.indexOf(r), 1);
+    saveEdits('options');
     return { data: null, error: null };
   }
   if (table === 'campaigns' && isAdmin()) {
@@ -522,12 +549,13 @@ class Query implements PromiseLike<Result> {
     if (this.mode === 'delete') return writeDelete(this.table, rows);
     if (this.mode === 'update') {
       if (this.table === 'profiles') {
-        const allowed = ['first_name', 'last_name', 'phone', 'birthday', 'favorite_branch_id', 'marketing_opt_in'];
+        const allowed = ['first_name', 'last_name', 'phone', 'birthday', 'favorite_branch_id', 'marketing_opt_in', 'locale'];
         for (const r of rows) for (const k of Object.keys(this.patch)) if (allowed.includes(k)) r[k] = this.patch[k];
         save();
         return { data: null, error: null };
       }
-      const editable: Record<string, 'products' | 'campaigns' | 'branches' | 'settings' | 'milks' | 'categories'> = {
+      const editable: Record<string, 'products' | 'campaigns' | 'branches' | 'settings' | 'milks' | 'categories' | 'options'> = {
+        option_groups: 'options', option_values: 'options',
         products: 'products', campaigns: 'campaigns', branches: 'branches', app_settings: 'settings',
         milk_options: 'milks', menu_categories: 'categories',
       };
@@ -598,7 +626,27 @@ const rpcs: Record<string, (p: Row) => unknown> = {
       } else if (it.milk_id) {
         throw new DemoError(`milk_not_allowed:${prod.id}`);
       }
-      return { key: String(i), product: prod as Product, milk, qty };
+      // options: active values of groups the product offers; one per single-choice group; required groups default
+      const offered = productGroups.filter((l) => l.product_id === prod.id).map((l) => l.group_id as string);
+      const chosen = [...new Set(((it as { options?: string[] }).options ?? []).map(String))];
+      if (chosen.length > 10) throw new DemoError('invalid_options');
+      const values = chosen.map((id) => {
+        const v = optionValues.find((x) => x.id === id && x.is_active);
+        const g = v && optionGroups.find((x) => x.id === v.group_id && x.is_active);
+        if (!v || !g || !offered.includes(String(g.id))) throw new DemoError(`option_unavailable:${prod.id}`);
+        return v;
+      });
+      for (const g of optionGroups.filter((x) => offered.includes(String(x.id)) && x.is_active)) {
+        const inGroup = values.filter((v) => v.group_id === g.id);
+        if (!g.multi && inGroup.length > 1) throw new DemoError('invalid_options');
+        if (g.required && inGroup.length === 0) {
+          const d = optionValues.find((v) => v.group_id === g.id && v.is_default && v.is_active);
+          if (d) values.push(d);
+        }
+      }
+      const ord = (v: Row) => Number(optionGroups.find((g) => g.id === v.group_id)?.sort ?? 0) * 100 + Number(v.sort ?? 0);
+      values.sort((a, b) => ord(a) - ord(b));
+      return { key: String(i), product: prod as Product, milk, options: values as unknown as OptionValue[], qty };
     });
 
     const coffees = lines.filter((l) => l.product.is_coffee).reduce((s, l) => s + l.qty, 0);
@@ -625,7 +673,9 @@ const rpcs: Record<string, (p: Row) => unknown> = {
     for (const l of t.lines) {
       state.items.push({
         id: state.nextItemId++, order_id: o.id, product_id: l.product.id, product_name: l.product.name,
-        milk_label: l.milk?.label ?? null, unit_price: l.unit, quantity: l.qty, free_quantity: l.free, is_coffee: l.product.is_coffee,
+        milk_label: l.milk?.label ?? null, milk_id: l.milk?.id ?? null, unit_price: l.unit, quantity: l.qty, free_quantity: l.free, is_coffee: l.product.is_coffee,
+        options: l.options.map((v) => ({ id: v.id, group: v.group_id, label: v.label, label_en: v.label_en ?? v.label, price: v.extra_price })),
+        options_label: l.options.length ? l.options.map((v) => v.label).join(' · ') : null,
       });
     }
     available.slice(0, useRewards).forEach((r) => { r.reserved_order_id = o.id; });
@@ -776,6 +826,22 @@ Object.assign(rpcs, {
       if (o.sim) o.sim_at = new Date(pickup.getTime() - (b.prep_minutes + 1) * 60_000).toISOString();
       save();
     }
+    return publicOrder(o);
+  },
+  place_order_v3(p: Row) {
+    const note = String(p.p_note ?? '').replace(/[\s\u0000-\u001f]+/g, ' ').trim() || null;
+    if (note && note.length > 140) throw new DemoError('invalid_note');
+    const table = String(p.p_table ?? '').trim() || null;
+    if (table) {
+      const b = branches.find((x) => x.id === p.p_branch_id);
+      if (!b) throw new DemoError('branch_not_found');
+      if (!/^[1-9][0-9]{0,2}$/.test(table) || Number(table) > (b.table_count ?? 0) || p.p_pickup_at) throw new DemoError('invalid_table');
+    }
+    const created = rpcs.place_order_v2({ ...p, p_eco_packaging: table ? false : p.p_eco_packaging, p_own_cup: table ? false : p.p_own_cup }) as Order;
+    const o = state.orders.find((x) => x.id === created.id)!;
+    o.table_label = table;
+    o.note = note;
+    save();
     return publicOrder(o);
   },
   staff_set_busy(p: Row) {
@@ -1029,7 +1095,7 @@ Object.assign(rpcs, {
       .sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, limit)
       .map((o) => ({ id: o.id, order_no: o.order_no, branch_id: o.branch_id, customer_name: o.customer_name, email: emailOf(o.user_id),
         status: o.status, payment_method: o.payment_method, payment_status: o.payment_status, total: o.total, created_at: o.created_at,
-        pickup_at: o.pickup_at ?? null, items: itemsOf(o.id) }));
+        pickup_at: o.pickup_at ?? null, table_label: o.table_label ?? null, items: itemsOf(o.id) }));
   },
 });
 

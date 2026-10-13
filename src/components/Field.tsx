@@ -3,6 +3,7 @@ import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import { AlertCircle } from 'lucide-react-native';
 import { Txt } from './Txt';
 import { color, font, radius, space } from '@/theme/tokens';
+import { L } from '@/lib/i18n';
 
 type Props = TextInputProps & { label: string; optional?: boolean; hint?: string; error?: string; prefix?: string; right?: ReactNode };
 
@@ -11,7 +12,7 @@ export const Field = forwardRef<TextInput, Props>(function Field({ label, option
     <View style={styles.wrap}>
       <Txt variant="label">
         {label}
-        {optional ? <Txt variant="bodySm" color="inkMuted"> (isteğe bağlı)</Txt> : null}
+        {optional ? <Txt variant="bodySm" color="inkMuted">{L(' (isteğe bağlı)', ' (optional)')}</Txt> : null}
       </Txt>
       <View style={[styles.box, error ? styles.boxError : null]}>
         {prefix ? <View style={styles.prefix}><Txt variant="body">{prefix}</Txt></View> : null}

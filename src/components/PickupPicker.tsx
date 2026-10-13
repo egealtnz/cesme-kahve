@@ -8,6 +8,7 @@ import { OptionRow } from './Controls';
 import { branchState, clock, pickupSlots } from '@/lib/hours';
 import type { Branch } from '@/lib/types';
 import { color, radius, space } from '@/theme/tokens';
+import { L } from '@/lib/i18n';
 
 type Props = { branch: Branch; value: string | null; onChange: (iso: string | null) => void };
 
@@ -32,16 +33,16 @@ export function PickupPicker({ branch, value, onChange }: Props) {
         disabled={!st.orderNow}
         onPress={() => onChange(null)}
         icon={Zap}
-        title="Hemen hazırlansın"
-        body={st.orderNow ? `Yaklaşık ${st.waitMinutes} dakikada hazır${st.kind === 'busy' ? ' · şube şu an yoğun' : ''}` : st.label}
+        title={L('Hemen hazırlansın', 'As soon as possible')}
+        body={st.orderNow ? L(`Yaklaşık ${st.waitMinutes} dakikada hazır${st.kind === 'busy' ? ' · şube şu an yoğun' : ''}`, `Ready in about ${st.waitMinutes} minutes${st.kind === 'busy' ? ' · the branch is busy' : ''}`) : st.label}
       />
       <OptionRow
         selected={later}
         disabled={slots.length === 0}
         onPress={chooseLater}
         icon={CalendarClock}
-        title="Daha sonra alacağım"
-        body={slots.length ? 'Bugün ya da yarın, istediğin saate hazırlayalım.' : 'Yakın zamanda uygun saat yok.'}
+        title={L('Daha sonra alacağım', 'Later')}
+        body={slots.length ? L('Bugün ya da yarın, istediğin saate hazırlayalım.', 'Today or tomorrow, ready at the time you pick.') : L('Yakın zamanda uygun saat yok.', 'No times available soon.')}
       />
       {later && slots.length ? (
         <View style={styles.box}>
@@ -52,7 +53,7 @@ export function PickupPicker({ branch, value, onChange }: Props) {
                 <Pressable key={d} accessibilityRole="tab" accessibilityState={{ selected: day === d, disabled: !any }} disabled={!any}
                   onPress={() => { setDay(d); const f = slots.find((s) => s.day === d); if (f) onChange(f.at.toISOString()); }}
                   style={[styles.day, day === d && styles.dayOn, !any && { opacity: 0.4 }]}>
-                  <Txt variant="label" color={day === d ? 'ink' : 'inkMuted'}>{d === 0 ? 'Bugün' : 'Yarın'}</Txt>
+                  <Txt variant="label" color={day === d ? 'ink' : 'inkMuted'}>{d === 0 ? L('Bugün', 'Today') : L('Yarın', 'Tomorrow')}</Txt>
                 </Pressable>
               );
             })}
@@ -62,7 +63,7 @@ export function PickupPicker({ branch, value, onChange }: Props) {
               const iso = s.at.toISOString();
               const on = iso === value;
               return (
-                <Pressable key={iso} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={`${day === 0 ? 'Bugün' : 'Yarın'} ${clock(s.at)}`}
+                <Pressable key={iso} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={`${day === 0 ? L('Bugün', 'Today') : L('Yarın', 'Tomorrow')} ${clock(s.at)}`}
                   onPress={() => onChange(iso)} style={[styles.slot, on && styles.slotOn]}>
                   <Txt variant="label" color={on ? 'onPrimary' : 'ink'} style={{ fontVariant: ['tabular-nums'] }}>{clock(s.at)}</Txt>
                 </Pressable>

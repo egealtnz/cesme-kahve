@@ -12,6 +12,7 @@ import { useAuth } from '@/state/auth';
 import { useCart } from '@/state/cart';
 import { useToast } from '@/state/toast';
 import { space } from '@/theme/tokens';
+import { L } from '@/lib/i18n';
 
 /** In-app account deletion (App Store 5.1.1(v) and Google Play account deletion requirements). */
 export default function DeleteAccount() {
@@ -24,29 +25,30 @@ export default function DeleteAccount() {
   const [error, setError] = useState<string | null>(null);
   if (!session) return <Redirect href="/profile" />;
 
-  const ok = confirm.trim().toLocaleUpperCase('tr-TR') === 'SİL';
+  const word = L('SİL', 'DELETE');
+  const ok = confirm.trim().toLocaleUpperCase('tr-TR') === word || confirm.trim().toUpperCase() === word;
 
   return (
     <Screen>
       <TopBar back />
-      <Txt variant="h1" accessibilityRole="header" style={{ marginTop: space[5] }}>Hesabını sil</Txt>
-      <Txt variant="body" style={{ marginTop: space[3] }}>Hesabını silersen bunlar kalıcı olarak silinir ve geri alınamaz:</Txt>
+      <Txt variant="h1" accessibilityRole="header" style={{ marginTop: space[5] }}>{L('Hesabını sil', 'Delete your account')}</Txt>
+      <Txt variant="body" style={{ marginTop: space[3] }}>{L('Hesabını silersen bunlar kalıcı olarak silinir ve geri alınamaz:', 'Deleting your account permanently removes the following, and it cannot be undone:')}</Txt>
       <Card style={{ marginTop: space[4], gap: space[2] }}>
         {[
-          'Ad, soyad, e-posta, telefon ve doğum tarihin',
-          `Kahve kartındaki ${profile?.stamps ?? 0} damgan`,
-          `${rewards.data?.length ?? 0} hediye kahven`,
-          'Bildirim ayarların ve kayıtlı cihazların',
+          L('Ad, soyad, e-posta, telefon ve doğum tarihin', 'Your name, email, phone and date of birth'),
+          L(`Kahve kartındaki ${profile?.stamps ?? 0} damgan`, `The ${profile?.stamps ?? 0} stamps on your coffee card`),
+          L(`${rewards.data?.length ?? 0} hediye kahven`, `Your ${rewards.data?.length ?? 0} free coffees`),
+          L('Bildirim ayarların ve kayıtlı cihazların', 'Your notification settings and devices'),
         ].map((t) => <Txt key={t} variant="bodySm">• {t}</Txt>)}
       </Card>
       <Txt variant="bodySm" color="inkMuted" style={{ marginTop: space[4] }}>
-        Vergi mevzuatı gereği geçmiş siparişlerin tutar ve ürün bilgileri, adınla ilişkisi kesilerek yasal süre boyunca saklanır.
+        {L('Vergi mevzuatı gereği geçmiş siparişlerin tutar ve ürün bilgileri, adınla ilişkisi kesilerek yasal süre boyunca saklanır.', 'Tax law requires us to keep the amounts and items of past orders for the legal period, no longer linked to your name.')}
       </Txt>
       <View style={{ gap: space[4], marginTop: space[6] }}>
-        <Field label="Onaylamak için SİL yaz" value={confirm} onChangeText={setConfirm} autoCapitalize="characters" autoCorrect={false} />
+        <Field label={L('Onaylamak için SİL yaz', 'Type DELETE to confirm')} value={confirm} onChangeText={setConfirm} autoCapitalize="characters" autoCorrect={false} />
         {error ? <Txt variant="bodySm" color="error">{error}</Txt> : null}
         <Button
-          label="Hesabımı kalıcı olarak sil"
+          label={L('Hesabımı kalıcı olarak sil', 'Delete my account permanently')}
           variant="danger"
           icon={Trash2}
           disabled={!ok}
@@ -57,7 +59,7 @@ export default function DeleteAccount() {
             try {
               await deleteMyAccount();
               cart.clear();
-              toast('Hesabın silindi.');
+              toast(L('Hesabın silindi.', 'Your account was deleted.'));
               router.dismissAll();
               router.replace('/');
             } catch (e) {
@@ -67,7 +69,7 @@ export default function DeleteAccount() {
             }
           }}
         />
-        <Button label="Vazgeç" variant="tertiary" size="md" style={{ alignSelf: 'center' }} onPress={() => router.back()} />
+        <Button label={L('Vazgeç', 'Cancel')} variant="tertiary" size="md" style={{ alignSelf: 'center' }} onPress={() => router.back()} />
       </View>
     </Screen>
   );

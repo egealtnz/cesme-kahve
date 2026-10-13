@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Minus, Plus, Trash2 } from 'lucide-react-native';
 import { Txt } from './Txt';
 import { color, radius } from '@/theme/tokens';
+import { L } from '@/lib/i18n';
 
 type Props = { value: number; onChange: (n: number) => void; name: string; min?: number; max?: number; removable?: boolean };
 
@@ -9,10 +10,10 @@ export function Stepper({ value, onChange, name, min = 1, max = 20, removable = 
   const trash = removable && value === 1;
   const minusDisabled = !removable && value <= min;
   return (
-    <View style={styles.wrap} accessibilityRole="adjustable" accessibilityLabel={`${name} adedi`} accessibilityValue={{ now: value, min, max }}>
+    <View style={styles.wrap} accessibilityRole="adjustable" accessibilityLabel={L(`${name} adedi`, `${name} quantity`)} accessibilityValue={{ now: value, min, max }}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={trash ? `${name} ürününü sepetten çıkar` : `Bir ${name} azalt`}
+        accessibilityLabel={trash ? L(`${name} ürününü sepetten çıkar`, `Remove ${name} from the cart`) : L(`Bir ${name} azalt`, `One less ${name}`)}
         disabled={minusDisabled}
         hitSlop={4}
         onPress={() => onChange(value - 1)}
@@ -23,7 +24,7 @@ export function Stepper({ value, onChange, name, min = 1, max = 20, removable = 
       <Txt variant="label" style={styles.value}>{value}</Txt>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Bir ${name} daha ekle`}
+        accessibilityLabel={L(`Bir ${name} daha ekle`, `One more ${name}`)}
         disabled={value >= max}
         hitSlop={4}
         onPress={() => onChange(value + 1)}

@@ -7,6 +7,7 @@ import { trLower } from '@/lib/format';
 import { branchState } from '@/lib/hours';
 import type { Branch } from '@/lib/types';
 import { color, font, radius, shadow, space } from '@/theme/tokens';
+import { L } from '@/lib/i18n';
 
 type Props = { branches: Branch[]; selectedId: string | null; onSelect: (b: Branch) => void; showChevron?: boolean };
 
@@ -27,9 +28,9 @@ export function BranchList({ branches, selectedId, onSelect, showChevron }: Prop
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Şube, ilçe ya da şehir ara"
+          placeholder={L('Şube, ilçe ya da şehir ara', 'Search branch, district or city')}
           placeholderTextColor={color.inkMuted}
-          accessibilityLabel="Şube ara"
+          accessibilityLabel={L('Şube ara', 'Search branches')}
           style={styles.input}
           autoCorrect={false}
           returnKeyType="search"
@@ -37,7 +38,7 @@ export function BranchList({ branches, selectedId, onSelect, showChevron }: Prop
       </View>
       <View style={{ gap: space[6], marginTop: space[6] }}>
         {groups.length === 0 ? (
-          <View style={styles.none}><Txt variant="bodySm" color="inkMuted">“{query}” ile eşleşen bir şube bulamadık. İlçe ya da şehir adıyla dene.</Txt></View>
+          <View style={styles.none}><Txt variant="bodySm" color="inkMuted">{L(`“${query}” ile eşleşen bir şube bulamadık. İlçe ya da şehir adıyla dene.`, `No branch matches “${query}”. Try a district or city name.`)}</Txt></View>
         ) : groups.map((g) => (
           <View key={g.city}>
             <Txt variant="h6" accessibilityRole="header">{g.city}</Txt>
@@ -52,7 +53,7 @@ export function BranchList({ branches, selectedId, onSelect, showChevron }: Prop
                     key={b.id}
                     accessibilityRole="radio"
                     accessibilityState={{ selected, disabled: closed }}
-                    accessibilityLabel={`${b.name}, ${b.district}, ${b.city}, ${closed ? 'şu an sipariş almıyor' : note ?? `yaklaşık ${st.waitMinutes} dakika`}`}
+                    accessibilityLabel={`${b.name}, ${b.district}, ${b.city}, ${closed ? L('şu an sipariş almıyor', 'not taking orders right now') : note ?? L(`yaklaşık ${st.waitMinutes} dakika`, `about ${st.waitMinutes} minutes`)}`}
                     disabled={closed}
                     onPress={() => onSelect(b)}
                     style={({ pressed }) => [styles.row, closed && styles.rowClosed, selected && styles.rowOn, pressed && { opacity: 0.9 }]}
@@ -63,15 +64,15 @@ export function BranchList({ branches, selectedId, onSelect, showChevron }: Prop
                     <View style={{ flex: 1 }}>
                       <Txt variant="body" style={{ fontFamily: 'DMSans-SemiBold' }} color={closed ? 'inkMuted' : 'ink'}>{b.name}</Txt>
                       <Txt variant="bodySm" color="inkMuted">{b.district} · {b.city}</Txt>
-                      {note ? <Txt variant="caption" color="warning" style={{ marginTop: 2 }}>{note} · ileri saate sipariş verilebilir</Txt> : null}
+                      {note ? <Txt variant="caption" color="warning" style={{ marginTop: 2 }}>{note} · {L('ileri saate sipariş verilebilir', 'you can order for later')}</Txt> : null}
                     </View>
-                    {b.status === 'coming_soon' ? <Badge label="Yakında" /> : closed ? <Badge label="Kapalı" /> : selected ? (
+                    {b.status === 'coming_soon' ? <Badge label={L('Yakında', 'Coming soon')} /> : closed ? <Badge label={L('Kapalı', 'Closed')} /> : selected ? (
                       <View style={styles.check}><Check size={16} color={color.onPrimary} strokeWidth={2} /></View>
                     ) : (
                       <View style={styles.meta}>
                         <Clock size={16} color={st.kind === 'busy' ? color.warning : color.inkMuted} strokeWidth={1.75} />
                         <Txt variant="caption" color={st.kind === 'busy' ? 'warning' : 'inkMuted'}>
-                          {st.kind === 'busy' ? `Yoğun · ~${st.waitMinutes} dk` : st.orderNow ? `~${st.waitMinutes} dk` : 'İleri saat'}
+                          {st.kind === 'busy' ? L(`Yoğun · ~${st.waitMinutes} dk`, `Busy · ~${st.waitMinutes} min`) : st.orderNow ? L(`~${st.waitMinutes} dk`, `~${st.waitMinutes} min`) : L('İleri saat', 'Later')}
                         </Txt>
                         {showChevron ? <ChevronRight size={20} color={color.inkMuted} strokeWidth={1.75} /> : null}
                       </View>

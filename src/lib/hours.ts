@@ -1,9 +1,11 @@
 // Opening hours, busy mode and pickup times. Turkey has used UTC+3 all year since 2016, so "Turkey time"
 // is computed with a fixed offset (the database uses the Europe/Istanbul zone and agrees).
 import type { Branch, OpeningHours } from './types';
+import { isEn, L } from './i18n';
 
 const TR_OFFSET_MS = 3 * 3600_000;
 export const DAY_NAMES = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'] as const;
+const DAY_NAMES_EN = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
 type DayKey = keyof OpeningHours;
 
 /** Turkey-time parts of a moment: ISO weekday (1 = Monday) and minutes since midnight. */
@@ -71,21 +73,22 @@ export function busyExtra(b: Branch, now = new Date()): number {
 
 export function branchState(b: Branch, now = new Date()): BranchState {
   const wait = b.prep_minutes + busyExtra(b, now);
-  if (b.status === 'coming_soon') return { orderNow: false, orderable: false, kind: 'unavailable', waitMinutes: wait, label: 'Yakında' };
-  if (b.status !== 'open' || !b.accepts_orders) return { orderNow: false, orderable: false, kind: 'unavailable', waitMinutes: wait, label: 'Sipariş almıyor' };
+  if (b.status === 'coming_soon') return { orderNow: false, orderable: false, kind: 'unavailable', waitMinutes: wait, label: L('Yakında', 'Coming soon') };
+  if (b.status !== 'open' || !b.accepts_orders) return { orderNow: false, orderable: false, kind: 'unavailable', waitMinutes: wait, label: L('Sipariş almıyor', 'Not taking orders') };
   if (b.paused_until && Date.parse(b.paused_until) > now.getTime()) {
     const until = new Date(b.paused_until);
-    return { orderNow: false, orderable: true, kind: 'paused', waitMinutes: wait, pausedUntil: until, label: `Kısa ara · devam: ${clock(until)}` };
+    return { orderNow: false, orderable: true, kind: 'paused', waitMinutes: wait, pausedUntil: until, label: L(`Kısa ara · devam: ${clock(until)}`, `Short break · back at ${clock(until)}`) };
   }
   if (!isOpenAt(b.opening_hours, now)) {
     const opensAt = nextOpening(b.opening_hours, now);
     return {
       orderNow: false, orderable: !!opensAt, kind: 'closed', waitMinutes: wait, opensAt,
-      label: opensAt ? `Kapalı · açılış: ${dayWord(opensAt, now)}${clock(opensAt)}` : 'Kapalı',
+      label: opensAt ? L(`Kapalı · açılış: ${dayWord(opensAt, now)}${clock(opensAt)}`, `Closed · opens ${dayWord(opensAt, now)}${clock(opensAt)}`)
+        : L('Kapalı', 'Closed'),
     };
   }
   const busy = busyExtra(b, now) > 0;
-  return { orderNow: true, orderable: true, kind: busy ? 'busy' : 'open', waitMinutes: wait, label: busy ? `Yoğun · ~${wait} dk` : `~${wait} dk` };
+  return { orderNow: true, orderable: true, kind: busy ? 'busy' : 'open', waitMinutes: wait, label: busy ? L(`Yoğun · ~${wait} dk`, `Busy · ~${wait} min`) : L(`~${wait} dk`, `~${wait} min`) };
 }
 
 /** "08:00" in Turkey time */
@@ -99,15 +102,15 @@ export function dayWord(d: Date, now = new Date()): string {
   const a = trParts(d), b = trParts(now);
   const diff = Math.round((Date.UTC(a.y, a.m, a.day) - Date.UTC(b.y, b.m, b.day)) / 86_400_000);
   if (diff === 0) return '';
-  if (diff === 1) return 'yarın ';
-  return DAY_NAMES[a.dow - 1] + ' ';
+  if (diff === 1) return L('yarın ', 'tomorrow ');
+  return (isEn() ? DAY_NAMES_EN : DAY_NAMES)[a.dow - 1] + ' ';
 }
 
 /** "Bugün 15:30", "Yarın 09:15" */
 export function pickupLabel(iso: string, now = new Date()): string {
   const d = new Date(iso);
   const w = dayWord(d, now);
-  return `${w ? w.charAt(0).toLocaleUpperCase('tr-TR') + w.slice(1) : 'Bugün '}${clock(d)}`;
+  return `${w ? w.charAt(0).toLocaleUpperCase('tr-TR') + w.slice(1) : L('Bugün ', 'Today ')}${clock(d)}`;
 }
 
 /**

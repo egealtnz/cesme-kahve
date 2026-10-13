@@ -11,6 +11,7 @@ import { branchState } from '@/lib/hours';
 import { useAuth } from '@/state/auth';
 import { useCart } from '@/state/cart';
 import { color, space } from '@/theme/tokens';
+import { L } from '@/lib/i18n';
 
 /** Always shown between the cart and payment: the customer confirms where they will collect. */
 export default function CheckoutBranch() {
@@ -34,11 +35,11 @@ export default function CheckoutBranch() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
             <MapPin size={18} color={color.inkMuted} strokeWidth={1.75} />
             <Txt variant="bodySm" color="inkMuted" style={{ flex: 1 }}>
-              {branch && st ? <>Teslim alınacak şube: <Txt variant="bodySm" style={{ fontFamily: 'DMSans-SemiBold' }}>{branch.name}</Txt> · {st.orderNow ? `~${st.waitMinutes} dk` : st.label}</> : 'Devam etmek için bir şube seç.'}
+              {branch && st ? <>{L('Teslim alınacak şube: ', 'Pick up at: ')}<Txt variant="bodySm" style={{ fontFamily: 'DMSans-SemiBold' }}>{branch.name}</Txt> · {st.orderNow ? L(`~${st.waitMinutes} dk`, `~${st.waitMinutes} min`) : st.label}</> : L('Devam etmek için bir şube seç.', 'Choose a branch to continue.')}
             </Txt>
           </View>
           <Button
-            label="Bu şubeyle devam et"
+            label={L('Bu şubeyle devam et', 'Continue with this branch')}
             icon={ArrowRight}
             disabled={!branch}
             onPress={() => { if (branch) { cart.setBranch(branch.id); router.push('/checkout/confirm'); } }}
@@ -46,12 +47,12 @@ export default function CheckoutBranch() {
         </View>
       }
     >
-      <TopBar back backLabel="Sepete dön" />
+      <TopBar back backLabel={L('Sepete dön', 'Back to cart')} />
       <View style={{ marginTop: space[5], marginBottom: space[6] }}>
-        <Txt variant="overline" color="secondaryInk">Ödeme öncesi · Şube seçimi</Txt>
-        <Txt variant="h1" accessibilityRole="header" style={{ marginTop: 4 }}>Siparişini hangi şubeden teslim alacaksın?</Txt>
+        <Txt variant="overline" color="secondaryInk">{L('Ödeme öncesi · Şube seçimi', 'Before paying · Branch')}</Txt>
+        <Txt variant="h1" accessibilityRole="header" style={{ marginTop: 4 }}>{L('Siparişini hangi şubeden teslim alacaksın?', 'Where will you pick up your order?')}</Txt>
         <Txt variant="bodySm" color="inkMuted" style={{ marginTop: space[2] }}>
-          Siparişini seçtiğin şubede hazırlayacağız. Ödemeye geçmeden önce şubeni onayla.
+          {L('Siparişini seçtiğin şubede hazırlayacağız. Ödemeye geçmeden önce şubeni onayla.', 'We prepare your order at the branch you choose. Confirm it before paying.')}
         </Txt>
       </View>
       {branches ? <BranchList branches={branches} selectedId={selected} onSelect={(b) => setSelected(b.id)} /> : <ActivityIndicator color={color.ink} />}
